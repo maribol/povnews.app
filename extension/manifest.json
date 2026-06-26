@@ -1,0 +1,30 @@
+{
+  "manifest_version": 3,
+  "name": "POV News",
+  "version": "1.0.0",
+  "description": "POV-scored news digest on your new tab — powered by your Cursor API key.",
+  "icons": {
+    "16": "public/icon-16.png",
+    "48": "public/icon-48.png",
+    "128": "public/icon-128.png"
+  },
+  "options_ui": {
+    "page": "src/settings/index.html",
+    "open_in_tab": true
+  },
+  "action": {
+    "default_title": "POV News settings"
+  },
+  "chrome_url_overrides": {
+    "newtab": "src/newtab/index.html"
+  },
+  "background": {
+    "service_worker": "src/background/worker.ts",
+    "type": "module"
+  },
+  "permissions": ["storage", "unlimitedStorage", "alarms"],
+  "host_permissions": [
+    "https://api.cursor.com/*",
+    "https://*/*"
+  ]
+}
