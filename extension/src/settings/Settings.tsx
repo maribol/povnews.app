@@ -22,6 +22,7 @@ import {
   ThumbsUp,
   Flame,
   Coins,
+  Globe,
 } from "lucide-react";
 import {
   STORAGE_KEYS,
@@ -55,6 +56,9 @@ import {
   parseProfileImportJson,
   userPovToProfileDraft,
 } from "../utils/profileImportExport";
+import { LANGUAGES } from "../i18n";
+import type { Translator, TranslationKey } from "../i18n";
+import { useTranslation } from "../i18n/useTranslation";
 
 const rawPromptModules = import.meta.glob("../../prompts/**/*.md", {
   query: "?raw",
@@ -141,11 +145,13 @@ function Overview({
   tokenData,
   digestHistory,
   runHistory,
+  t,
 }: {
   stats: StatsState | undefined;
   tokenData: TokenDayRecord[];
   digestHistory: Digest[];
   runHistory: RunHistoryEntry[];
+  t: Translator;
 }) {
   const days = stats?.days ?? [];
   const deliveredSeries = days.slice(-14).map((d) => d.delivered);
@@ -157,31 +163,31 @@ function Overview({
   return (
     <section>
       <h2 className="text-xs font-bold uppercase tracking-widest text-stone-400 dark:text-stone-500 mb-2 px-1">
-        Overview
+        {t("settings.overview.title")}
       </h2>
 
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
         <StatCard
           icon={Newspaper}
-          label="Delivered"
+          label={t("settings.overview.delivered")}
           value={stats?.totalDelivered ?? 0}
           tone="bg-indigo-100 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400"
         />
         <StatCard
           icon={Eye}
-          label="Read"
+          label={t("settings.overview.read")}
           value={stats?.totalRead ?? 0}
           tone="bg-sky-100 dark:bg-sky-900/30 text-sky-600 dark:text-sky-400"
         />
         <StatCard
           icon={ThumbsUp}
-          label="Liked"
+          label={t("settings.overview.liked")}
           value={stats?.totalLiked ?? 0}
           tone="bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400"
         />
         <StatCard
           icon={Flame}
-          label="Day streak"
+          label={t("settings.overview.dayStreak")}
           value={stats?.streak ? `${stats.streak}d` : "0d"}
           tone="bg-amber-100 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400"
         />
@@ -192,9 +198,9 @@ function Overview({
         <div className="settings-card p-4">
           <div className="flex items-center justify-between mb-2">
             <p className="text-sm font-medium text-stone-900 dark:text-stone-100">
-              Activity
+              {t("settings.overview.activity")}
             </p>
-            <span className="text-[11px] text-stone-400">last 14 days</span>
+            <span className="text-[11px] text-stone-400">{t("settings.overview.last14Days")}</span>
           </div>
           {hasTrend ? (
             <Sparkline
@@ -202,16 +208,18 @@ function Overview({
               width={260}
               height={48}
               className="w-full h-12"
-              ariaLabel="Items delivered over the last 14 days"
+              ariaLabel={t("settings.overview.activityChartAria")}
             />
           ) : (
             <p className="text-xs text-stone-400 py-3">
-              No activity yet — your first digest will show up here.
+              {t("settings.overview.noActivity")}
             </p>
           )}
           {lastRun && (
             <p className="text-[11px] text-stone-400 mt-2">
-              Last run {formatShortDate(lastRun.finishedAt ?? lastRun.startedAt)} ·{" "}
+              {t("settings.overview.lastRun", {
+                date: formatShortDate(lastRun.finishedAt ?? lastRun.startedAt),
+              })}{" "}
               {lastRun.status}
             </p>
           )}
@@ -224,21 +232,27 @@ function Overview({
               <Coins className="w-4 h-4" />
             </IconCircle>
             <p className="text-sm font-medium text-stone-900 dark:text-stone-100">
-              Token usage
+              {t("settings.overview.tokenUsage")}
             </p>
           </div>
           <p className="text-2xl font-bold tabular-nums text-stone-900 dark:text-stone-100 leading-none">
             {totalTokens.toLocaleString()}
           </p>
           <p className="text-[11px] text-stone-500 dark:text-stone-400 mt-1">
-            tokens across {tokenData.length} day{tokenData.length === 1 ? "" : "s"} ·{" "}
+            {t("settings.overview.tokensAcross", {
+              count: tokenData.length,
+              unit:
+                tokenData.length === 1
+                  ? t("settings.overview.day")
+                  : t("settings.overview.days"),
+            })}{" "}
             <a
               href={PRICING_URL}
               target="_blank"
               rel="noopener noreferrer"
               className="text-indigo-500 hover:text-indigo-600 underline"
             >
-              estimate cost
+              {t("settings.overview.estimateCost")}
             </a>
           </p>
         </div>
@@ -248,7 +262,7 @@ function Overview({
       {recentDigests.length > 0 && (
         <div className="settings-card mt-2.5 overflow-hidden">
           <p className="px-4 pt-3 pb-1 text-xs font-semibold uppercase tracking-wide text-stone-400 dark:text-stone-500">
-            Recent digests
+            {t("settings.overview.recentDigests")}
           </p>
           <div className="divide-y divide-stone-100 dark:divide-stone-800">
             {recentDigests.map((d, i) => (
@@ -261,12 +275,23 @@ function Overview({
                 </IconCircle>
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-medium text-stone-900 dark:text-stone-100">
-                    {formatShortDate(d.generatedAt)} digest
+                    {t("settings.overview.digestLabel", {
+                      date: formatShortDate(d.generatedAt),
+                    })}
                   </p>
                   <p className="text-xs text-stone-500 dark:text-stone-400">
-                    {d.items.length} item{d.items.length === 1 ? "" : "s"} ·{" "}
-                    {d.pillars?.length ?? 0} pillar
-                    {(d.pillars?.length ?? 0) === 1 ? "" : "s"}
+                    {t("settings.overview.digestMeta", {
+                      itemCount: d.items.length,
+                      itemUnit:
+                        d.items.length === 1
+                          ? t("settings.overview.item")
+                          : t("settings.overview.items"),
+                      pillarCount: d.pillars?.length ?? 0,
+                      pillarUnit:
+                        (d.pillars?.length ?? 0) === 1
+                          ? t("settings.overview.pillar")
+                          : t("settings.overview.pillars"),
+                    })}
                   </p>
                 </div>
               </div>
@@ -278,13 +303,13 @@ function Overview({
   );
 }
 
-function TokenChart({ data }: { data: TokenDayRecord[] }) {
+function TokenChart({ data, t }: { data: TokenDayRecord[]; t: Translator }) {
   const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
   const last14 = data.slice(-14);
   if (last14.length === 0) {
     return (
       <p className="text-sm text-stone-400 dark:text-stone-500 py-4 text-center">
-        No usage data yet. Run a digest or generate a profile to start tracking.
+        {t("settings.tokens.noData")}
       </p>
     );
   }
@@ -332,7 +357,7 @@ function TokenChart({ data }: { data: TokenDayRecord[] }) {
           viewBox={`0 0 ${W} ${H}`}
           className="w-full h-32"
           role="img"
-          aria-label="Daily token usage chart"
+          aria-label={t("settings.tokens.chartAria")}
           onMouseLeave={() => setHoveredIndex(null)}
         >
           {gridLines}
@@ -416,20 +441,26 @@ function TokenChart({ data }: { data: TokenDayRecord[] }) {
           <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
             <span className="font-semibold">{hovered.date}</span>
             <span>
-              Input: <span className="tabular-nums font-medium">{hovered.inputTokens.toLocaleString()}</span>
+              {t("settings.tokens.inputColon")} <span className="tabular-nums font-medium">{hovered.inputTokens.toLocaleString()}</span>
             </span>
             <span>
-              Output: <span className="tabular-nums font-medium">{hovered.outputTokens.toLocaleString()}</span>
+              {t("settings.tokens.outputColon")} <span className="tabular-nums font-medium">{hovered.outputTokens.toLocaleString()}</span>
             </span>
             <span>
-              Total: <span className="tabular-nums font-medium">{hovered.totalTokens.toLocaleString()}</span>
+              {t("settings.tokens.totalColon")} <span className="tabular-nums font-medium">{hovered.totalTokens.toLocaleString()}</span>
             </span>
             <span className="text-stone-500 dark:text-stone-400">
-              {hovered.runs} run{hovered.runs === 1 ? "" : "s"}
+              {t("settings.tokens.runsCount", {
+                count: hovered.runs,
+                unit:
+                  hovered.runs === 1
+                    ? t("settings.tokens.run")
+                    : t("settings.tokens.runs"),
+              })}
             </span>
           </div>
         ) : (
-          <span>Hover a day to see input, output, and run count</span>
+          <span>{t("settings.tokens.hoverHint")}</span>
         )}
       </div>
       <div className="flex items-end gap-1">
@@ -444,14 +475,16 @@ function TokenChart({ data }: { data: TokenDayRecord[] }) {
       <div className="flex gap-4 text-xs text-stone-500">
         <span className="flex items-center gap-1.5">
           <span className="w-4 h-0 border-t-2 border-indigo-500 dark:border-indigo-400 rounded-full" />{" "}
-          Input
+          {t("settings.tokens.input")}
         </span>
         <span className="flex items-center gap-1.5">
           <span className="w-4 h-0 border-t-2 border-indigo-300 dark:border-indigo-700 rounded-full" />{" "}
-          Output
+          {t("settings.tokens.output")}
         </span>
         <span className="ml-auto">
-          Total: {data.reduce((s, d) => s + d.totalTokens, 0).toLocaleString()} tokens
+          {t("settings.tokens.totalTokens", {
+            count: data.reduce((s, d) => s + d.totalTokens, 0).toLocaleString(),
+          })}
         </span>
       </div>
     </div>
@@ -464,14 +497,14 @@ function formatDuration(ms?: number): string {
   return `${Math.round(ms / 60_000)}m`;
 }
 
-function formatRunningDuration(startedAt?: string): string {
-  if (!startedAt) return "just started";
+function formatRunningDuration(t: Translator, startedAt?: string): string {
+  if (!startedAt) return t("settings.runHistory.justStarted");
   const sec = Math.max(0, Math.round((Date.now() - Date.parse(startedAt)) / 1000));
   if (sec < 60) return `${sec}s`;
   return `${Math.floor(sec / 60)}m ${sec % 60}s`;
 }
 
-function RunActivityLog({ run }: { run: RunHistoryEntry }) {
+function RunActivityLog({ run, t }: { run: RunHistoryEntry; t: Translator }) {
   const live = run.status === "running";
   const log = useAgentActivity(live, run.activityLog ?? []);
   const entries = condenseActivityFeed(log);
@@ -479,7 +512,9 @@ function RunActivityLog({ run }: { run: RunHistoryEntry }) {
   if (entries.length === 0) {
     return (
       <p className="text-[11px] text-stone-400">
-        {live ? "Waiting for agent activity…" : "No activity log saved for this run."}
+        {live
+          ? t("settings.runHistory.waitingActivity")
+          : t("settings.runHistory.noActivityLog")}
       </p>
     );
   }
@@ -493,7 +528,7 @@ function RunActivityLog({ run }: { run: RunHistoryEntry }) {
   );
 }
 
-function RunHistoryList({ runs }: { runs: RunHistoryEntry[] }) {
+function RunHistoryList({ runs, t }: { runs: RunHistoryEntry[]; t: Translator }) {
   const [, tick] = useState(0);
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const hasRunning = runs.some((r) => r.status === "running");
@@ -507,7 +542,7 @@ function RunHistoryList({ runs }: { runs: RunHistoryEntry[] }) {
   if (runs.length === 0) {
     return (
       <p className="px-4 pb-4 text-xs text-stone-400 dark:text-stone-500">
-        No runs yet. History starts with your next digest or profile run.
+        {t("settings.runHistory.noRuns")}
       </p>
     );
   }
@@ -536,7 +571,7 @@ function RunHistoryList({ runs }: { runs: RunHistoryEntry[] }) {
             >
               <div className="flex items-center gap-2 text-xs">
                 <span className={`font-medium capitalize ${statusColor}`}>
-                  {run.status === "running" ? "Running" : run.status}
+                  {run.status === "running" ? t("settings.runHistory.running") : run.status}
                 </span>
                 <span className="text-stone-400">·</span>
                 <span className="text-stone-600 dark:text-stone-300 capitalize">{run.kind}</span>
@@ -556,13 +591,13 @@ function RunHistoryList({ runs }: { runs: RunHistoryEntry[] }) {
               <div className="flex items-center gap-2 mt-0.5 text-[11px] text-stone-500">
                 <span>
                   {run.status === "running"
-                    ? formatRunningDuration(run.startedAt)
+                    ? formatRunningDuration(t, run.startedAt)
                     : formatDuration(run.durationMs)}
                 </span>
                 {run.itemCount !== undefined && (
                   <>
                     <span>·</span>
-                    <span>{run.itemCount} items</span>
+                    <span>{t("settings.runHistory.itemCount", { count: run.itemCount })}</span>
                   </>
                 )}
                 {run.activitySummary && (
@@ -585,7 +620,7 @@ function RunHistoryList({ runs }: { runs: RunHistoryEntry[] }) {
                     {run.error}
                   </p>
                 )}
-                <RunActivityLog run={run} />
+                <RunActivityLog run={run} t={t} />
               </div>
             )}
           </div>
@@ -596,6 +631,7 @@ function RunHistoryList({ runs }: { runs: RunHistoryEntry[] }) {
 }
 
 export function Settings() {
+  const { t, language, setLanguage } = useTranslation();
   const [apiKey, setApiKey] = useState("");
   const [theme, setTheme] = useState<ThemePreference>("system");
   const [runStatus, setRunStatus] = useState("");
@@ -723,7 +759,7 @@ export function Settings() {
       const run = await getFromStorage(STORAGE_KEYS.runState);
       setRunState(run);
       setRunStatus(run?.status ?? "idle");
-      const msg = res?.error ?? "Could not start refresh";
+      const msg = res?.error ?? t("settings.digest.couldNotStart");
       if (msg.includes("Rate limited")) setRunStatus("cooldown");
       alert(msg);
     } catch {
@@ -770,7 +806,7 @@ export function Settings() {
       setToast({
         id: `profile-export-error-${Date.now()}`,
         kind: "error",
-        title: "Export failed",
+        title: t("settings.profile.exportFailedTitle"),
         message: result.errors.join(" · "),
       });
       return;
@@ -780,8 +816,8 @@ export function Settings() {
     setToast({
       id: `profile-export-${Date.now()}`,
       kind: "success",
-      title: "Profile exported",
-      message: "JSON file downloaded to your device.",
+      title: t("settings.profile.exportedTitle"),
+      message: t("settings.profile.exportedMessage"),
     });
   }
 
@@ -791,7 +827,7 @@ export function Settings() {
       setToast({
         id: `profile-import-error-${Date.now()}`,
         kind: "error",
-        title: "Import failed",
+        title: t("settings.profile.importFailedTitle"),
         message: result.errors.join(" · "),
       });
       return;
@@ -808,8 +844,8 @@ export function Settings() {
     setToast({
       id: `profile-import-${Date.now()}`,
       kind: "success",
-      title: "Profile imported",
-      message: "Your next digest will use the updated POV.",
+      title: t("settings.profile.importedTitle"),
+      message: t("settings.profile.importedMessage"),
     });
   }
 
@@ -821,16 +857,16 @@ export function Settings() {
         setToast({
           id: `profile-import-read-error-${Date.now()}`,
           kind: "error",
-          title: "Import failed",
-          message: "Could not read the selected file.",
+          title: t("settings.profile.importFailedTitle"),
+          message: t("settings.profile.importReadError"),
         }),
       );
   }
 
   const themeOptions: { value: ThemePreference; icon: typeof Sun; label: string }[] = [
-    { value: "light", icon: Sun, label: "Light" },
-    { value: "dark", icon: Moon, label: "Dark" },
-    { value: "system", icon: Monitor, label: "System" },
+    { value: "light", icon: Sun, label: t("settings.theme.light") },
+    { value: "dark", icon: Moon, label: t("settings.theme.dark") },
+    { value: "system", icon: Monitor, label: t("settings.theme.system") },
   ];
 
   const modelOptions: CloudModelInfo[] = (() => {
@@ -857,14 +893,14 @@ export function Settings() {
         }}
       />
       <header className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold text-stone-900 dark:text-stone-100">Settings</h1>
+        <h1 className="text-2xl font-bold text-stone-900 dark:text-stone-100">{t("settings.title")}</h1>
         <button
           type="button"
           onClick={() => {
             window.location.href = chrome.runtime.getURL("src/newtab/index.html");
           }}
           className="p-2 rounded-lg hover:bg-stone-100 dark:hover:bg-stone-800 text-stone-400 hover:text-stone-600 dark:hover:text-stone-300 transition-colors"
-          title="Back to feed"
+          title={t("settings.backToFeed")}
         >
           <X className="w-5 h-5" />
         </button>
@@ -876,12 +912,13 @@ export function Settings() {
         tokenData={tokenData}
         digestHistory={digestHistory}
         runHistory={runHistory}
+        t={t}
       />
 
       {/* General settings */}
       <section>
         <h2 className="text-xs font-bold uppercase tracking-widest text-stone-400 dark:text-stone-500 mb-2 px-1">
-          General
+          {t("settings.general.title")}
         </h2>
         <div className="settings-card overflow-hidden">
           {/* API key */}
@@ -891,7 +928,7 @@ export function Settings() {
             </IconCircle>
             <div className="flex-1 min-w-0">
               <p className="text-sm font-medium text-stone-900 dark:text-stone-100">
-                Cursor API Key
+                {t("settings.apiKey.label")}
               </p>
               <p className="text-xs text-stone-500 dark:text-stone-400 mt-0.5">
                 <a
@@ -900,9 +937,9 @@ export function Settings() {
                   rel="noopener noreferrer"
                   className="text-indigo-500 hover:text-indigo-600 underline"
                 >
-                  Integrations
+                  {t("settings.apiKey.integrationsLink")}
                 </a>{" "}
-                &rarr; User API Keys &rarr; Add
+                {t("settings.apiKey.path")}
               </p>
             </div>
           </div>
@@ -910,7 +947,7 @@ export function Settings() {
             <input
               type="password"
               autoComplete="off"
-              placeholder="crsr_…"
+              placeholder={t("settings.apiKey.placeholder")}
               value={apiKey}
               onChange={(e) => setApiKey(e.target.value)}
               className="w-full px-3 py-2.5 text-sm rounded-lg bg-stone-50 dark:bg-stone-800/50 border border-stone-200 dark:border-stone-700 text-stone-900 dark:text-stone-100 placeholder:text-stone-400 focus:outline-none focus:ring-2 focus:ring-indigo-500"
@@ -924,17 +961,17 @@ export function Settings() {
             </IconCircle>
             <div className="flex-1 min-w-0">
               <p className="text-sm font-medium text-stone-900 dark:text-stone-100">
-                Cloud model
+                {t("settings.cloudModel.label")}
               </p>
               <p className="text-xs text-stone-500 dark:text-stone-400 mt-0.5">
-                Model that scores and writes your digest ·{" "}
+                {t("settings.cloudModel.description")}{" "}
                 <a
                   href={PRICING_URL}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="text-indigo-500 hover:text-indigo-600 underline"
                 >
-                  see pricing
+                  {t("settings.cloudModel.seePricing")}
                 </a>
               </p>
             </div>
@@ -944,7 +981,7 @@ export function Settings() {
               disabled={modelsLoading || !apiKey.trim()}
               className="px-2.5 py-1 text-xs font-medium rounded-lg bg-stone-100 dark:bg-stone-800 text-stone-600 dark:text-stone-300 hover:bg-stone-200 dark:hover:bg-stone-700 transition-colors disabled:opacity-50"
             >
-              {modelsLoading ? "Loading…" : "Refresh"}
+              {modelsLoading ? t("settings.cloudModel.loading") : t("settings.cloudModel.refresh")}
             </button>
           </div>
           <div className="px-4 pb-4 pt-1">
@@ -957,7 +994,7 @@ export function Settings() {
                 {modelOptions.map((m) => (
                   <option key={m.id} value={m.id}>
                     {m.label}
-                    {m.recommended ? " (default)" : ""} — {m.cost}
+                    {m.recommended ? t("settings.cloudModel.defaultSuffix") : ""} — {m.cost}
                   </option>
                 ))}
               </select>
@@ -972,10 +1009,10 @@ export function Settings() {
             </IconCircle>
             <div className="flex-1 min-w-0">
               <p className="text-sm font-medium text-stone-900 dark:text-stone-100">
-                Theme & Display
+                {t("settings.theme.label")}
               </p>
               <p className="text-xs text-stone-500 dark:text-stone-400 mt-0.5">
-                Light, dark, or match system
+                {t("settings.theme.description")}
               </p>
             </div>
           </div>
@@ -1003,13 +1040,47 @@ export function Settings() {
               );
             })}
           </div>
+
+          {/* Language */}
+          <div className="settings-row border-t border-stone-100 dark:border-stone-800">
+            <IconCircle color="bg-teal-100 dark:bg-teal-900/30 text-teal-600 dark:text-teal-400">
+              <Globe className="w-4 h-4" />
+            </IconCircle>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-medium text-stone-900 dark:text-stone-100">
+                {t("language.label")}
+              </p>
+              <p className="text-xs text-stone-500 dark:text-stone-400 mt-0.5">
+                {t("language.description")}
+              </p>
+            </div>
+          </div>
+          <div className="px-4 pb-3 flex flex-wrap gap-2">
+            {LANGUAGES.map((lang) => {
+              const active = language === lang.code;
+              return (
+                <button
+                  key={lang.code}
+                  type="button"
+                  onClick={() => setLanguage(lang.code)}
+                  className={`flex-1 flex items-center justify-center gap-1.5 px-3 py-2 text-sm rounded-lg border transition-colors ${
+                    active
+                      ? "bg-indigo-50 dark:bg-indigo-900/20 border-indigo-300 dark:border-indigo-700 text-indigo-600 dark:text-indigo-400 font-medium"
+                      : "bg-white dark:bg-stone-800 border-stone-200 dark:border-stone-700 text-stone-600 dark:text-stone-400 hover:bg-stone-50 dark:hover:bg-stone-700"
+                  }`}
+                >
+                  {lang.nativeLabel}
+                </button>
+              );
+            })}
+          </div>
         </div>
       </section>
 
       {/* Profile */}
       <section>
         <h2 className="text-xs font-bold uppercase tracking-widest text-stone-400 dark:text-stone-500 mb-2 px-1">
-          Profile
+          {t("settings.profile.title")}
         </h2>
         <div className="settings-card overflow-hidden">
           <div className="settings-row">
@@ -1018,10 +1089,10 @@ export function Settings() {
             </IconCircle>
             <div className="flex-1 min-w-0">
               <p className="text-sm font-medium text-stone-900 dark:text-stone-100">
-                POV profile
+                {t("settings.profile.label")}
               </p>
               <p className="text-xs text-stone-500 dark:text-stone-400 mt-0.5">
-                Export or import pillars, sources, and audiences as JSON
+                {t("settings.profile.description")}
               </p>
             </div>
             <div className="flex gap-2 shrink-0">
@@ -1030,14 +1101,14 @@ export function Settings() {
                 onClick={() => void exportProfile()}
                 className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg bg-stone-100 dark:bg-stone-800 text-stone-700 dark:text-stone-300 hover:bg-stone-200 dark:hover:bg-stone-700 transition-colors"
               >
-                <Download className="w-3.5 h-3.5" /> Export
+                <Download className="w-3.5 h-3.5" /> {t("settings.profile.export")}
               </button>
               <button
                 type="button"
                 onClick={() => profileImportRef.current?.click()}
                 className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg bg-stone-100 dark:bg-stone-800 text-stone-700 dark:text-stone-300 hover:bg-stone-200 dark:hover:bg-stone-700 transition-colors"
               >
-                <Upload className="w-3.5 h-3.5" /> Import
+                <Upload className="w-3.5 h-3.5" /> {t("settings.profile.import")}
               </button>
             </div>
           </div>
@@ -1047,7 +1118,7 @@ export function Settings() {
       {/* Digest */}
       <section>
         <h2 className="text-xs font-bold uppercase tracking-widest text-stone-400 dark:text-stone-500 mb-2 px-1">
-          Digest
+          {t("settings.digest.title")}
         </h2>
         <div className="settings-card overflow-hidden">
           <div className="settings-row">
@@ -1056,14 +1127,14 @@ export function Settings() {
             </IconCircle>
             <div className="flex-1 min-w-0">
               <p className="text-sm font-medium text-stone-900 dark:text-stone-100">
-                Digest Run
+                {t("settings.digest.runLabel")}
               </p>
               <p className="text-xs text-stone-500 dark:text-stone-400 mt-0.5">
                 {runStatus === "running"
-                  ? "Agent is researching news for you…"
+                  ? t("settings.digest.researching")
                   : disableRateLimit
-                    ? `Status: ${runStatus} · Daily at 7 AM · No refresh cooldown`
-                    : `Status: ${runStatus} · Daily at 7 AM · 1 manual refresh/hour`}
+                    ? t("settings.digest.statusNoCooldown", { status: runStatus })
+                    : t("settings.digest.statusWithCooldown", { status: runStatus })}
               </p>
             </div>
             {runStatus !== "running" && (
@@ -1072,17 +1143,17 @@ export function Settings() {
                 onClick={() => void refreshNow()}
                 className="px-3 py-1.5 text-xs font-medium rounded-lg bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400 border border-indigo-200 dark:border-indigo-800 hover:bg-indigo-100 dark:hover:bg-indigo-900/30 transition-colors"
               >
-                Refresh now
+                {t("settings.digest.refreshNow")}
               </button>
             )}
           </div>
           <div className="settings-row border-t border-stone-100 dark:border-stone-800">
             <div className="flex-1 min-w-0 pl-12">
               <p className="text-sm font-medium text-stone-900 dark:text-stone-100">
-                Disable refresh cooldown
+                {t("settings.digest.disableCooldown")}
               </p>
               <p className="text-xs text-stone-500 dark:text-stone-400 mt-0.5">
-                Allow manual refreshes back-to-back (uses more API credits)
+                {t("settings.digest.disableCooldownDescription")}
               </p>
             </div>
             <button
@@ -1105,16 +1176,16 @@ export function Settings() {
           </div>
           <div className="border-t border-stone-100 dark:border-stone-800">
             <p className="px-4 pt-3 pb-1 text-xs font-semibold uppercase tracking-wide text-stone-400 dark:text-stone-500">
-              Run history
+              {t("settings.digest.runHistory")}
             </p>
-            <RunHistoryList runs={runHistory} />
+            <RunHistoryList runs={runHistory} t={t} />
           </div>
           {runStatus === "running" && (
             <div className="border-t border-stone-100 dark:border-stone-800 p-4">
               <AgentActivityFeed
                 active
                 seed={runState?.activityLog ?? []}
-                title="Agent activity"
+                title={t("settings.digest.agentActivity")}
                 startedAt={runState?.startedAt}
                 streamingItemCount={runState?.streamingItemCount}
                 collapsible={false}
@@ -1128,7 +1199,7 @@ export function Settings() {
       {/* Token usage */}
       <section>
         <h2 className="text-xs font-bold uppercase tracking-widest text-stone-400 dark:text-stone-500 mb-2 px-1">
-          Token Usage
+          {t("settings.tokenUsage.title")}
         </h2>
         <div className="settings-card p-4">
           <div className="flex items-center gap-2 mb-3">
@@ -1136,17 +1207,17 @@ export function Settings() {
               <BarChart3 className="w-4 h-4" />
             </IconCircle>
             <p className="text-sm font-medium text-stone-900 dark:text-stone-100">
-              Daily token consumption
+              {t("settings.tokenUsage.label")}
             </p>
           </div>
-          <TokenChart data={tokenData} />
+          <TokenChart data={tokenData} t={t} />
         </div>
       </section>
 
       {/* Prompts */}
       <section>
         <h2 className="text-xs font-bold uppercase tracking-widest text-stone-400 dark:text-stone-500 mb-2 px-1">
-          Prompts
+          {t("settings.prompts.title")}
         </h2>
         <div className="settings-card overflow-hidden">
           {PROMPT_FILES.map((pf) => (
@@ -1161,10 +1232,12 @@ export function Settings() {
               </IconCircle>
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-medium text-stone-900 dark:text-stone-100">
-                  {pf.label}
+                  {t(`settings.prompts.label.${pf.key}` as TranslationKey)}
                 </p>
                 <p className="text-xs text-stone-500 dark:text-stone-400 mt-0.5">
-                  {customPrompts[pf.key] ? "Custom override" : `Default (${pf.file})`}
+                  {customPrompts[pf.key]
+                    ? t("settings.prompts.customOverride")
+                    : t("settings.prompts.defaultFile", { file: pf.file })}
                 </p>
               </div>
               <ChevronRight className="w-4 h-4 text-stone-400 shrink-0" />
@@ -1183,21 +1256,21 @@ export function Settings() {
                 type="button"
                 onClick={() => setEditingPrompt(null)}
                 className="p-2 -ml-2 rounded-lg hover:bg-stone-100 dark:hover:bg-stone-800 text-stone-500 hover:text-stone-700 dark:hover:text-stone-300 transition-colors"
-                aria-label="Back to settings"
+                aria-label={t("settings.promptEditor.backAria")}
               >
                 <ChevronRight className="w-5 h-5 rotate-180" />
               </button>
               <div className="flex-1 min-w-0">
                 <p className="text-[11px] font-semibold uppercase tracking-widest text-stone-400 dark:text-stone-500">
-                  Edit prompt
+                  {t("settings.promptEditor.eyebrow")}
                 </p>
                 <h3 className="text-base font-semibold text-stone-900 dark:text-stone-100 truncate">
-                  {PROMPT_FILES.find((p) => p.key === editingPrompt)?.label}
+                  {t(`settings.prompts.label.${editingPrompt}` as TranslationKey)}
                 </h3>
               </div>
               {promptSaved && (
                 <span className="text-xs text-emerald-500 flex items-center gap-1">
-                  <Check className="w-3.5 h-3.5" /> Saved
+                  <Check className="w-3.5 h-3.5" /> {t("settings.promptEditor.saved")}
                 </span>
               )}
               {customPrompts[editingPrompt] && (
@@ -1209,7 +1282,7 @@ export function Settings() {
                   }}
                   className="px-3 py-1.5 text-xs font-medium rounded-lg text-stone-600 dark:text-stone-300 hover:bg-stone-100 dark:hover:bg-stone-800 transition-colors"
                 >
-                  Reset to default
+                  {t("settings.promptEditor.resetDefault")}
                 </button>
               )}
               <button
@@ -1217,7 +1290,7 @@ export function Settings() {
                 onClick={() => void savePrompt()}
                 className="inline-flex items-center gap-1.5 px-4 py-1.5 text-sm font-semibold rounded-lg bg-indigo-500 text-white hover:bg-indigo-600 transition-colors"
               >
-                <Save className="w-3.5 h-3.5" /> Save
+                <Save className="w-3.5 h-3.5" /> {t("settings.promptEditor.save")}
               </button>
             </div>
           </header>
@@ -1226,14 +1299,13 @@ export function Settings() {
           <div className="flex-1 min-h-0 overflow-hidden">
             <div className="max-w-3xl mx-auto w-full h-full px-4 sm:px-6 py-4 flex flex-col">
               <p className="text-xs text-stone-500 dark:text-stone-400 mb-3">
-                Leave empty to use the built-in default. Paste a custom prompt to override
-                it for every future run.
+                {t("settings.promptEditor.helpText")}
               </p>
               <textarea
                 value={promptText}
                 onChange={(e) => setPromptText(e.target.value)}
                 spellCheck={false}
-                placeholder="Leave empty to use the default prompt. Paste your custom prompt here to override."
+                placeholder={t("settings.promptEditor.placeholder")}
                 className="flex-1 min-h-0 w-full px-4 py-3.5 text-[13px] font-mono leading-relaxed rounded-xl bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 text-stone-900 dark:text-stone-100 placeholder:text-stone-400 resize-none focus:outline-none focus:ring-2 focus:ring-indigo-500"
               />
             </div>
@@ -1255,10 +1327,10 @@ export function Settings() {
             </IconCircle>
             <div className="flex-1 min-w-0">
               <p className="text-sm font-medium text-stone-900 dark:text-stone-100">
-                Privacy Policy
+                {t("settings.privacy.label")}
               </p>
               <p className="text-xs text-stone-500 dark:text-stone-400 mt-0.5">
-                Data never leaves your device except to api.cursor.com
+                {t("settings.privacy.description")}
               </p>
             </div>
             <ChevronRight className="w-4 h-4 text-stone-400 shrink-0" />
@@ -1273,11 +1345,11 @@ export function Settings() {
           onClick={() => void save()}
           className="px-5 py-2.5 text-sm font-semibold rounded-xl bg-indigo-500 text-white hover:bg-indigo-600 shadow-sm shadow-indigo-500/20 transition-colors"
         >
-          Save settings
+          {t("settings.save")}
         </button>
         {saved && (
           <span className="text-sm text-emerald-500 flex items-center gap-1">
-            <Check className="w-4 h-4" /> Saved
+            <Check className="w-4 h-4" /> {t("settings.saved")}
           </span>
         )}
       </div>

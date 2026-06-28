@@ -5,6 +5,8 @@ import { StatusDot } from "../design/components";
 import { Sparkline } from "../design/components/Sparkline";
 import { useStorage } from "./hooks/useStorage";
 import { STORAGE_KEYS } from "../storage/schema";
+import { useTranslation } from "../i18n/useTranslation";
+import type { Translator } from "../i18n";
 
 export type SidebarFilter =
   | { kind: "all" }
@@ -21,12 +23,15 @@ type Props = {
   onSelectFilter: (filter: SidebarFilter) => void;
 };
 
-const PHASE_LABEL: Record<RunPhase, string> = {
-  discovering: "Discovering",
-  scoring: "Scoring",
-  writing: "Writing",
-  done: "Done",
-};
+function phaseLabel(t: Translator, phase: RunPhase): string {
+  const KEYS: Record<RunPhase, string> = {
+    discovering: t("sidebar.phaseDiscovering"),
+    scoring: t("sidebar.phaseScoring"),
+    writing: t("sidebar.phaseWriting"),
+    done: t("sidebar.phaseDone"),
+  };
+  return KEYS[phase];
+}
 
 function rowClass(active: boolean): string {
   return `w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-left transition-colors ${
@@ -59,6 +64,7 @@ function CountPill({ value, active }: { value: number; active: boolean }) {
 }
 
 function StatsFooter() {
+  const { t } = useTranslation();
   const [stats] = useStorage(STORAGE_KEYS.stats);
   if (!stats || stats.days.length === 0) return null;
 
@@ -82,12 +88,12 @@ function StatsFooter() {
       <div className="card-flat p-3">
         <div className="flex items-center justify-between">
           <span className="text-[11px] font-semibold text-stone-500 dark:text-stone-400">
-            This week
+            {t("sidebar.thisWeek")}
           </span>
           {stats.streak > 0 && (
             <span className="inline-flex items-center gap-1 text-[11px] font-bold text-amber-600 dark:text-amber-400">
               <Flame className="w-3.5 h-3.5" strokeWidth={2} />
-              {stats.streak}d
+              {t("sidebar.streakDays", { count: stats.streak })}
             </span>
           )}
         </div>
@@ -104,7 +110,7 @@ function StatsFooter() {
                       ? "text-emerald-600 dark:text-emerald-400"
                       : "text-rose-500 dark:text-rose-400"
                   }`}
-                  title="vs. previous week"
+                  title={t("sidebar.vsPreviousWeek")}
                 >
                   {deltaPct >= 0 ? (
                     <TrendingUp className="w-3 h-3" strokeWidth={2} />
@@ -116,7 +122,7 @@ function StatsFooter() {
               )}
             </div>
             <div className="text-[10px] text-stone-400 dark:text-stone-500 mt-1">
-              new · {stats.totalRead} read all-time
+              {t("sidebar.readAllTime", { count: stats.totalRead })}
             </div>
           </div>
           {hasTrend && (
@@ -125,7 +131,7 @@ function StatsFooter() {
               width={84}
               height={30}
               className="w-[84px] h-[30px] shrink-0"
-              ariaLabel="Articles delivered this week"
+              ariaLabel={t("sidebar.deliveredThisWeek")}
             />
           )}
         </div>
@@ -135,6 +141,7 @@ function StatsFooter() {
 }
 
 export function Sidebar({ pov, digest, archivedIds, filter, runState, onSelectFilter }: Props) {
+  const { t } = useTranslation();
   const archived = new Set(archivedIds);
   const activeItems = (digest?.items ?? []).filter((item) => !archived.has(item.id));
 
@@ -146,34 +153,38 @@ export function Sidebar({ pov, digest, archivedIds, filter, runState, onSelectFi
   const agentActive = filter.kind === "agent";
   const agentRunning = runState?.status === "running";
   const agentFailed = runState?.status === "failed";
-  const phaseLabel =
-    agentRunning && runState?.phase ? PHASE_LABEL[runState.phase] : agentRunning ? "Working" : null;
+  const phase =
+    agentRunning && runState?.phase
+      ? phaseLabel(t, runState.phase)
+      : agentRunning
+        ? t("sidebar.phaseWorking")
+        : null;
 
   return (
     <aside className="w-56 shrink-0 border-r border-stone-200/70 dark:border-stone-800/70 flex flex-col min-h-0 bg-white dark:bg-stone-900">
       <nav className="flex-1 overflow-y-auto scroll-thin px-2 py-2">
-        <SectionLabel>Agent</SectionLabel>
+        <SectionLabel>{t("sidebar.sectionAgent")}</SectionLabel>
         <button type="button" onClick={() => onSelectFilter({ kind: "agent" })} className={rowClass(agentActive)}>
           <Bot className="w-4 h-4 shrink-0" strokeWidth={1.75} />
-          <span className="text-sm flex-1">Agent</span>
+          <span className="text-sm flex-1">{t("sidebar.agent")}</span>
           {agentRunning ? (
             <span className="inline-flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wide text-emerald-600 dark:text-emerald-400">
               <StatusDot state="live" pulse />
-              {phaseLabel}
+              {phase}
             </span>
           ) : agentFailed ? (
             <StatusDot state="error" />
           ) : null}
         </button>
 
-        <SectionLabel>Feed</SectionLabel>
+        <SectionLabel>{t("sidebar.sectionFeed")}</SectionLabel>
         <button type="button" onClick={() => onSelectFilter({ kind: "all" })} className={rowClass(filter.kind === "all")}>
           <Inbox className="w-4 h-4 shrink-0" strokeWidth={1.75} />
-          <span className="text-sm flex-1">All items</span>
+          <span className="text-sm flex-1">{t("sidebar.allItems")}</span>
           <CountPill value={activeItems.length} active={filter.kind === "all"} />
         </button>
 
-        <SectionLabel>Pillars</SectionLabel>
+        <SectionLabel>{t("sidebar.sectionPillars")}</SectionLabel>
         {pov.pillars.map((pillar) => {
           const accent = accentForPillarSlug(pov, pillar.slug);
           const count = counts.get(pillar.slug) ?? 0;
@@ -202,7 +213,7 @@ export function Sidebar({ pov, digest, archivedIds, filter, runState, onSelectFi
           className={rowClass(filter.kind === "archived")}
         >
           <Archive className="w-4 h-4 shrink-0" strokeWidth={1.75} />
-          <span className="text-sm flex-1">Archived</span>
+          <span className="text-sm flex-1">{t("sidebar.archived")}</span>
           <CountPill value={archivedIds.length} active={filter.kind === "archived"} />
         </button>
       </nav>
@@ -217,7 +228,7 @@ export function Sidebar({ pov, digest, archivedIds, filter, runState, onSelectFi
           className="inline-flex items-center gap-1.5 text-[11px] text-stone-400 dark:text-stone-500 hover:text-stone-600 dark:hover:text-stone-300 transition-colors"
         >
           <ScrollText className="w-3.5 h-3.5" strokeWidth={1.75} />
-          Changelog
+          {t("sidebar.changelog")}
         </a>
       </div>
     </aside>

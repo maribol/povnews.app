@@ -38,6 +38,9 @@ matters to your specific situation.
   pro/anti examples that sharpen the next digest.
 - **Calm three-pane reader** — Sources → scored items → reader pane. Familiar
   muscle memory, a fundamentally different data model.
+- **Keyboard-first** — `⌘K` opens a command palette to search your whole digest;
+  single keys triage the selected item (like, archive, dismiss, open) without
+  leaving the home row.
 - **Runs on a schedule** — A fresh digest is ready each morning; refresh manually
   any time.
 
@@ -46,10 +49,11 @@ matters to your specific situation.
 A four-step wizard builds your point of view the first time you open a new tab
 (~3 minutes):
 
-1. **About you** — Who you are and what problems you want news about, free-form.
-2. **Pillars** — An agent suggests 4–6 topic pillars from your description. Edit or accept.
-3. **Sources** — Pick a preset bundle or paste your own RSS / site URLs.
-4. **Calibration** — Rate 10 sample items relevant or not. Your ratings teach the scorer.
+1. **API key** — Paste your Cursor API key and pick a cloud model. It stays in your browser.
+2. **About you** — Who you are and what problems you want news about, free-form.
+3. **Your profile** — An agent suggests 4–6 topic pillars and discovers sources from your
+   description. Edit pillars, add or remove sources, and tune the digest.
+4. **Calibration** — Rate sample items relevant or not. Your ratings teach the scorer.
 
 Behind the scenes, each digest run:
 

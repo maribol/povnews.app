@@ -39,6 +39,44 @@ import {
   initialSetupAnswers,
   readerPreferencesFromSetup,
 } from "../utils/readerPreferences";
+import { useTranslation } from "../i18n/useTranslation";
+import { LANGUAGES, type Translator } from "../i18n";
+
+function techDepthCopy(
+  t: Translator,
+  value: ReaderTechnicalDepth,
+): { label: string; detail: string } {
+  switch (value) {
+    case "business":
+      return {
+        label: t("wizard.tune.depth.business.label"),
+        detail: t("wizard.tune.depth.business.detail"),
+      };
+    case "technical":
+      return {
+        label: t("wizard.tune.depth.technical.label"),
+        detail: t("wizard.tune.depth.technical.detail"),
+      };
+    default:
+      return {
+        label: t("wizard.tune.depth.mixed.label"),
+        detail: t("wizard.tune.depth.mixed.detail"),
+      };
+  }
+}
+
+function stepTitle(t: Translator, id: (typeof STEPS)[number]["id"]): string {
+  switch (id) {
+    case "api":
+      return t("wizard.step.api.title");
+    case "about":
+      return t("wizard.step.about.title");
+    case "profile":
+      return t("wizard.step.profile.title");
+    case "calibrate":
+      return t("wizard.step.calibrate.title");
+  }
+}
 
 const MIN_ABOUT_LENGTH = 10;
 
@@ -185,27 +223,30 @@ function DigestTuneSection({
   setupQuestions,
   setupAnswers,
   onSetupAnswerChange,
+  t,
 }: {
   technicalDepth: ReaderTechnicalDepth;
   onTechnicalDepthChange: (depth: ReaderTechnicalDepth) => void;
   setupQuestions: SetupQuestion[];
   setupAnswers: Record<string, boolean>;
   onSetupAnswerChange: (id: string, value: boolean) => void;
+  t: Translator;
 }) {
   return (
     <div className="mb-6 rounded-lg border border-indigo-200/80 dark:border-indigo-800/60 bg-indigo-50/30 dark:bg-indigo-950/20 px-4 py-4 space-y-4">
       <div>
         <p className="text-xs font-bold uppercase tracking-widest text-indigo-500 dark:text-indigo-400">
-          Tune your digest
+          {t("wizard.tune.title")}
         </p>
         <p className="text-sm text-stone-600 dark:text-stone-400 mt-1">
-          We inferred this from your profile — adjust so the feed matches how you work.
+          {t("wizard.tune.subtitle")}
         </p>
       </div>
 
       <div className="grid gap-2 sm:grid-cols-3">
         {TECH_DEPTH_OPTIONS.map((opt) => {
           const selected = technicalDepth === opt.value;
+          const copy = techDepthCopy(t, opt.value);
           return (
             <button
               key={opt.value}
@@ -218,10 +259,10 @@ function DigestTuneSection({
               }`}
             >
               <span className="text-sm font-medium text-stone-900 dark:text-stone-100 block">
-                {opt.label}
+                {copy.label}
               </span>
               <span className="text-[11px] text-stone-500 dark:text-stone-400 leading-snug block mt-0.5">
-                {opt.detail}
+                {copy.detail}
               </span>
             </button>
           );
@@ -247,7 +288,7 @@ function DigestTuneSection({
                     : "bg-white dark:bg-stone-900 text-stone-500"
                 }`}
               >
-                Yes
+                {t("wizard.tune.yes")}
               </button>
               <button
                 type="button"
@@ -258,7 +299,7 @@ function DigestTuneSection({
                     : "bg-white dark:bg-stone-900 text-stone-500"
                 }`}
               >
-                No
+                {t("wizard.tune.no")}
               </button>
             </div>
           </div>
@@ -269,6 +310,7 @@ function DigestTuneSection({
 }
 
 export function Wizard({ onComplete, onClose }: Props) {
+  const { t, language, setLanguage } = useTranslation();
   const [step, setStep] = useState(0);
   const [apiKey, setApiKey] = useState("");
   const [apiError, setApiError] = useState<string | null>(null);
@@ -382,11 +424,11 @@ export function Wizard({ onComplete, onClose }: Props) {
     if (runState.status === "failed") {
       setAgentRunning(false);
       setProfileLoading(false);
-      setProfileError(runState.error ?? "Profile generation failed");
+      setProfileError(runState.error ?? t("wizard.profile.generationFailed"));
       if (runState.resultText) setResultText(runState.resultText);
       stopPolling();
     }
-  }, [profileDraft, runState, step, startPolling, stopPolling]);
+  }, [profileDraft, runState, step, startPolling, stopPolling, t]);
 
   useEffect(() => {
     if (step !== 2 || agentRunning || pillars.length === 0 || setupQuestions.length > 0) return;
@@ -462,7 +504,7 @@ export function Wizard({ onComplete, onClose }: Props) {
 
   function handleProfileFileImport(file: File): void {
     void file.text().then(importProfileJson).catch(() => {
-      setProfileError("Could not read the selected file");
+      setProfileError(t("wizard.about.fileReadError"));
     });
   }
 
@@ -530,7 +572,7 @@ export function Wizard({ onComplete, onClose }: Props) {
         apiKey: apiKey.trim(),
       });
       if (!res.ok) {
-        setApiError(res.error ?? "Invalid API key");
+        setApiError(res.error ?? t("wizard.api.invalidKey"));
         return;
       }
       setStep(1);
@@ -565,7 +607,7 @@ export function Wizard({ onComplete, onClose }: Props) {
         urls: allUrls,
       });
       if (!res.ok) {
-        setProfileError(res.error ?? "Could not start profile generation");
+        setProfileError(res.error ?? t("wizard.about.startError"));
         setProfileLoading(false);
         return;
       }
@@ -627,7 +669,7 @@ export function Wizard({ onComplete, onClose }: Props) {
         type: "START_INITIAL_DIGEST",
       });
       if (!startRes.ok) {
-        setProfileError(startRes.error ?? "Could not start your first digest");
+        setProfileError(startRes.error ?? t("wizard.profile.digestStartError"));
         return;
       }
 
@@ -677,15 +719,15 @@ export function Wizard({ onComplete, onClose }: Props) {
       <h1 className="text-sm font-bold text-stone-900 dark:text-stone-100 tracking-tight">
         POV News
       </h1>
-      <span className="text-xs text-stone-400 dark:text-stone-500">Setup</span>
+      <span className="text-xs text-stone-400 dark:text-stone-500">{t("wizard.header.setup")}</span>
       {onClose && (
         <button
           type="button"
           onClick={onClose}
-          aria-label="Close setup"
+          aria-label={t("wizard.close.aria")}
           className="ml-auto inline-flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium rounded-lg text-stone-500 dark:text-stone-400 hover:text-stone-700 dark:hover:text-stone-200 hover:bg-stone-100 dark:hover:bg-stone-800 transition-colors"
         >
-          <X className="w-4 h-4" /> Close
+          <X className="w-4 h-4" /> {t("wizard.close")}
         </button>
       )}
     </header>
@@ -727,7 +769,7 @@ export function Wizard({ onComplete, onClose }: Props) {
               {i > step && (
                 <span className="w-4 h-4 rounded-full border-2 border-stone-300 dark:border-stone-600 bg-transparent" />
               )}
-              {s.title}
+              {stepTitle(t, s.id)}
             </span>
           </span>
         ))}
@@ -736,16 +778,39 @@ export function Wizard({ onComplete, onClose }: Props) {
       {/* --- Step 0: API key --- */}
       {step === 0 && (
         <WizardCard>
+          <div className="flex items-center justify-between gap-3 mb-5">
+            <label
+              htmlFor="wizard-language"
+              className="text-xs font-medium uppercase tracking-wide text-stone-500 dark:text-stone-400"
+            >
+              {t("language.label")}
+            </label>
+            <div className="relative">
+              <select
+                id="wizard-language"
+                value={language}
+                onChange={(e) => setLanguage(e.target.value as typeof language)}
+                className="appearance-none pl-3 pr-8 py-1.5 text-xs rounded-lg bg-stone-50 dark:bg-stone-800 border border-stone-200 dark:border-stone-700 text-stone-900 dark:text-stone-100 focus:outline-none focus:ring-2 focus:ring-indigo-500 cursor-pointer"
+              >
+                {LANGUAGES.map((l) => (
+                  <option key={l.code} value={l.code}>
+                    {l.nativeLabel}
+                  </option>
+                ))}
+              </select>
+              <ChevronDown className="w-3.5 h-3.5 absolute right-2.5 top-1/2 -translate-y-1/2 text-stone-400 pointer-events-none" />
+            </div>
+          </div>
+
           <h2 className="text-xl font-bold text-stone-900 dark:text-stone-100 text-center">
-            Connect your Cursor API key
+            {t("wizard.api.title")}
           </h2>
           <p className="text-sm text-stone-500 dark:text-stone-400 text-center mt-2 mb-6">
-            We use Cloud Agents to generate your profile and daily digest. Your key stays
-            in this browser only.
+            {t("wizard.api.subtitle")}
           </p>
 
           <label className="text-xs font-medium uppercase tracking-wide text-stone-500 dark:text-stone-400 mb-1 block">
-            API key
+            {t("wizard.api.keyLabel")}
           </label>
           <input
             type="password"
@@ -763,7 +828,7 @@ export function Wizard({ onComplete, onClose }: Props) {
             className="w-full px-4 py-3 text-sm rounded-lg bg-stone-50 dark:bg-stone-800 border border-stone-200 dark:border-stone-700 text-stone-900 dark:text-stone-100 placeholder:text-stone-400 focus:outline-none focus:ring-2 focus:ring-indigo-500"
           />
           <p className="text-xs text-stone-400 mt-2">
-            Generate a key at{" "}
+            {t("wizard.api.generateKeyPrefix")}{" "}
             <a
               href="https://cursor.com/dashboard/integrations"
               target="_blank"
@@ -772,7 +837,7 @@ export function Wizard({ onComplete, onClose }: Props) {
             >
               cursor.com/dashboard/integrations
             </a>{" "}
-            &rarr; User API Keys &rarr; Add
+            {t("wizard.api.generateKeySuffix")}
           </p>
 
           {apiError && (
@@ -783,7 +848,7 @@ export function Wizard({ onComplete, onClose }: Props) {
 
           <div className="mt-6">
             <label className="flex items-center gap-1.5 text-xs font-medium uppercase tracking-wide text-stone-500 dark:text-stone-400 mb-2">
-              <Cpu className="w-3.5 h-3.5" /> Cloud model
+              <Cpu className="w-3.5 h-3.5" /> {t("wizard.api.cloudModel")}
             </label>
             <div className="relative">
               <select
@@ -794,21 +859,21 @@ export function Wizard({ onComplete, onClose }: Props) {
                 {modelOptions.map((m) => (
                   <option key={m.id} value={m.id}>
                     {m.label}
-                    {m.recommended ? " (default)" : ""} — {m.cost}
+                    {m.recommended ? t("wizard.api.modelDefaultSuffix") : ""} — {m.cost}
                   </option>
                 ))}
               </select>
               <ChevronDown className="w-4 h-4 absolute right-3 top-1/2 -translate-y-1/2 text-stone-400 pointer-events-none" />
             </div>
             <p className="text-xs text-stone-400 mt-2">
-              You can change this later in settings ·{" "}
+              {t("wizard.api.modelHelpPrefix")}{" "}
               <a
                 href={PRICING_URL}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="text-indigo-500 hover:text-indigo-600 underline"
               >
-                see pricing
+                {t("wizard.api.seePricing")}
               </a>
             </p>
           </div>
@@ -822,11 +887,11 @@ export function Wizard({ onComplete, onClose }: Props) {
             >
               {validatingKey ? (
                 <>
-                  <Loader2 className="w-4 h-4 animate-spin" /> Checking…
+                  <Loader2 className="w-4 h-4 animate-spin" /> {t("wizard.api.checking")}
                 </>
               ) : (
                 <>
-                  Next <ArrowRight className="w-4 h-4" />
+                  {t("wizard.nav.next")} <ArrowRight className="w-4 h-4" />
                 </>
               )}
             </NavButton>
@@ -838,15 +903,15 @@ export function Wizard({ onComplete, onClose }: Props) {
       {step === 1 && (
         <WizardCard>
           <h2 className="text-xl font-bold text-stone-900 dark:text-stone-100 text-center">
-            Tell us about yourself
+            {t("wizard.about.title")}
           </h2>
           <p className="text-sm text-stone-500 dark:text-stone-400 text-center mt-2 mb-6">
-            Brief role + what news helps you decide. AI builds pillars and sources — or import JSON to skip.
+            {t("wizard.about.subtitle")}
           </p>
 
           <textarea
             className="w-full min-h-32 px-4 py-3 text-sm rounded-lg bg-stone-50 dark:bg-stone-800 border border-stone-200 dark:border-stone-700 text-stone-900 dark:text-stone-100 placeholder:text-stone-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 resize-none"
-            placeholder="e.g. Founder of a checkout SaaS for DR teams. I care about paid-media policy, attribution, and conversion news — not generic AI hype."
+            placeholder={t("wizard.about.placeholder")}
             value={about}
             onChange={(e) => {
               setAbout(e.target.value);
@@ -855,19 +920,19 @@ export function Wizard({ onComplete, onClose }: Props) {
           />
           <p className="text-xs text-stone-400 mt-1">
             {about.trim().length < MIN_ABOUT_LENGTH
-              ? `${about.trim().length}/${MIN_ABOUT_LENGTH} characters minimum`
+              ? t("wizard.about.minChars", { count: about.trim().length, min: MIN_ABOUT_LENGTH })
               : about.trim().length > 400
-                ? `${about.trim().length} chars — shorter input often yields cleaner pillars`
-                : "2–3 sentences is enough. URLs add detail."}
+                ? t("wizard.about.tooLong", { count: about.trim().length })
+                : t("wizard.about.hint")}
           </p>
 
           <div className="mt-4">
             <label className="text-xs font-medium uppercase tracking-wide text-stone-500 dark:text-stone-400 mb-1 block">
-              Your URLs (agent will research these)
+              {t("wizard.about.urlsLabel")}
             </label>
             <div className="flex gap-2">
               <input
-                placeholder="your-site.com"
+                placeholder={t("wizard.about.urlPlaceholder")}
                 value={urlInput}
                 onChange={(e) => setUrlInput(e.target.value)}
                 onKeyDown={(e) => {
@@ -879,7 +944,7 @@ export function Wizard({ onComplete, onClose }: Props) {
                 className="flex-1 px-4 py-2.5 text-sm rounded-lg bg-stone-50 dark:bg-stone-800 border border-stone-200 dark:border-stone-700 text-stone-900 dark:text-stone-100 placeholder:text-stone-400 focus:outline-none focus:ring-2 focus:ring-indigo-500"
               />
               <NavButton variant="secondary" onClick={addUrl} disabled={!urlInput.trim()}>
-                Add
+                {t("wizard.nav.add")}
               </NavButton>
             </div>
             {urls.length > 0 && (
@@ -909,7 +974,7 @@ export function Wizard({ onComplete, onClose }: Props) {
             </div>
             <div className="relative flex justify-center">
               <span className="px-3 text-xs uppercase tracking-wide text-stone-400 bg-stone-100 dark:bg-stone-800 rounded-full">
-                or import
+                {t("wizard.about.orImport")}
               </span>
             </div>
           </div>
@@ -919,10 +984,10 @@ export function Wizard({ onComplete, onClose }: Props) {
             onClick={() => importInputRef.current?.click()}
             disabled={profileLoading}
           >
-            <Upload className="w-4 h-4" /> Import profile JSON
+            <Upload className="w-4 h-4" /> {t("wizard.about.importJson")}
           </NavButton>
           <p className="text-xs text-stone-400 text-center mt-2">
-            Skips AI generation — validates pillars, sources, and audiences.
+            {t("wizard.about.importHint")}
           </p>
 
           {profileError && (
@@ -933,7 +998,7 @@ export function Wizard({ onComplete, onClose }: Props) {
 
           <div className="flex items-center justify-between mt-8">
             <NavButton variant="secondary" onClick={() => setStep(0)} disabled={profileLoading}>
-              <ArrowLeft className="w-4 h-4" /> Back
+              <ArrowLeft className="w-4 h-4" /> {t("wizard.nav.back")}
             </NavButton>
             <Dots total={STEPS.length} current={step} />
             <NavButton
@@ -943,11 +1008,11 @@ export function Wizard({ onComplete, onClose }: Props) {
             >
               {profileLoading ? (
                 <>
-                  <Loader2 className="w-4 h-4 animate-spin" /> Starting…
+                  <Loader2 className="w-4 h-4 animate-spin" /> {t("wizard.about.starting")}
                 </>
               ) : (
                 <>
-                  Generate profile <ArrowRight className="w-4 h-4" />
+                  {t("wizard.about.generate")} <ArrowRight className="w-4 h-4" />
                 </>
               )}
             </NavButton>
@@ -959,13 +1024,13 @@ export function Wizard({ onComplete, onClose }: Props) {
       {step === 2 && (
         <WizardCard wide>
           <h2 className="text-xl font-bold text-stone-900 dark:text-stone-100 text-center">
-            {agentRunning ? "Building your profile…" : "Your profile"}
+            {agentRunning ? t("wizard.profile.building") : t("wizard.profile.title")}
           </h2>
           <div className="flex items-center justify-between mt-2 mb-6">
             <p className="text-sm text-stone-500 dark:text-stone-400">
               {agentRunning
-                ? "Agent is researching your sites and discovering sources. Edit anytime."
-                : "Review and customize your pillars and sources."}
+                ? t("wizard.profile.runningDesc")
+                : t("wizard.profile.reviewDesc")}
             </p>
             {!agentRunning && pillars.length > 0 && (
               <button
@@ -973,7 +1038,7 @@ export function Wizard({ onComplete, onClose }: Props) {
                 onClick={exportCurrentProfile}
                 className="inline-flex items-center gap-1.5 text-xs font-medium text-indigo-500 hover:text-indigo-600 shrink-0"
               >
-                <Download className="w-3.5 h-3.5" /> Export JSON
+                <Download className="w-3.5 h-3.5" /> {t("wizard.profile.exportJson")}
               </button>
             )}
           </div>
@@ -982,8 +1047,8 @@ export function Wizard({ onComplete, onClose }: Props) {
             <AgentActivityFeed
               active
               seed={runState?.activityLog ?? []}
-              title="Researching your business"
-              generatingLabel="Generating your profile JSON…"
+              title={t("wizard.profile.feedTitle")}
+              generatingLabel={t("wizard.profile.generatingLabel")}
               startedAt={runState?.startedAt}
               onStop={() => void cancelAgent()}
               cancelling={cancelling}
@@ -999,7 +1064,7 @@ export function Wizard({ onComplete, onClose }: Props) {
                 onClick={() => void retryProfileAgent()}
                 className="text-xs font-medium text-indigo-500 hover:text-indigo-600 underline"
               >
-                Retry with AI
+                {t("wizard.profile.retry")}
               </button>
             </div>
           )}
@@ -1030,15 +1095,15 @@ export function Wizard({ onComplete, onClose }: Props) {
             </div>
           ) : pillars.length === 0 ? (
             <div className="text-center py-6 space-y-3">
-              <p className="text-sm text-stone-400">No pillars yet.</p>
+              <p className="text-sm text-stone-400">{t("wizard.profile.noPillars")}</p>
               <NavButton variant="secondary" onClick={() => importInputRef.current?.click()}>
-                <Upload className="w-4 h-4" /> Import profile JSON
+                <Upload className="w-4 h-4" /> {t("wizard.about.importJson")}
               </NavButton>
             </div>
           ) : (
             <div className="space-y-2 mb-6">
               <p className="text-xs font-bold uppercase tracking-widest text-stone-400">
-                Pillars — {pillars.length}
+                {t("wizard.profile.pillarsCount", { count: pillars.length })}
               </p>
               {pillars.map((p, idx) => (
                 <div
@@ -1054,7 +1119,7 @@ export function Wizard({ onComplete, onClose }: Props) {
                       setPillars(next);
                     }}
                     className="w-3.5 h-3.5 rounded-full mt-2 shrink-0 border-2 border-white dark:border-stone-700"
-                    title="Click to change color"
+                    title={t("wizard.profile.changeColor")}
                     style={{
                       backgroundColor:
                         p.accent === "slate" ? "#64748b"
@@ -1074,7 +1139,7 @@ export function Wizard({ onComplete, onClose }: Props) {
                         setPillars(next);
                       }}
                       className="w-full px-0 py-0 text-sm font-medium bg-transparent text-stone-900 dark:text-stone-100 focus:outline-none border-none placeholder:text-stone-400"
-                      placeholder="Pillar name"
+                      placeholder={t("wizard.profile.pillarNamePlaceholder")}
                     />
                     <textarea
                       value={p.description}
@@ -1085,7 +1150,7 @@ export function Wizard({ onComplete, onClose }: Props) {
                       }}
                       rows={2}
                       className="w-full px-0 py-0 text-xs bg-transparent text-stone-500 dark:text-stone-400 focus:outline-none border-none resize-none placeholder:text-stone-300"
-                      placeholder="Description — what signals does this pillar cover?"
+                      placeholder={t("wizard.profile.pillarDescPlaceholder")}
                     />
                   </div>
                   {pillars.length > 1 && (
@@ -1109,6 +1174,7 @@ export function Wizard({ onComplete, onClose }: Props) {
               setupQuestions={setupQuestions}
               setupAnswers={setupAnswers}
               onSetupAnswerChange={handleSetupAnswerChange}
+              t={t}
             />
           )}
 
@@ -1116,18 +1182,18 @@ export function Wizard({ onComplete, onClose }: Props) {
           <div className="mb-4">
             <div className="flex items-center justify-between mb-2">
               <p className="text-xs font-bold uppercase tracking-widest text-stone-400">
-                Sources{" "}
+                {t("wizard.profile.sources")}{" "}
                 {agentRunning && sources.length === 0 && (
-                  <span className="normal-case font-normal">— discovering…</span>
+                  <span className="normal-case font-normal">{t("wizard.profile.discovering")}</span>
                 )}
                 {!agentRunning && sources.length > 0 && (
                   <span className="normal-case font-normal">
-                    — {sources.length} found
+                    {t("wizard.profile.sourcesFound", { count: sources.length })}
                   </span>
                 )}
               </p>
-              <label className="flex items-center gap-2 cursor-pointer select-none" title="Automatically discover new relevant sources as you use the app">
-                <span className="text-[11px] text-stone-400">Auto-discover</span>
+              <label className="flex items-center gap-2 cursor-pointer select-none" title={t("wizard.profile.autoDiscoverTitle")}>
+                <span className="text-[11px] text-stone-400">{t("wizard.profile.autoDiscover")}</span>
                 <button
                   type="button"
                   role="switch"
@@ -1169,7 +1235,7 @@ export function Wizard({ onComplete, onClose }: Props) {
             )}
             <div className="flex gap-2 mt-2">
               <input
-                placeholder="https://… add source"
+                placeholder={t("wizard.profile.sourcePlaceholder")}
                 value={sourceUrlInput}
                 onChange={(e) => setSourceUrlInput(e.target.value)}
                 onKeyDown={(e) => {
@@ -1185,14 +1251,14 @@ export function Wizard({ onComplete, onClose }: Props) {
                 onClick={addSourceUrl}
                 disabled={!sourceUrlInput.trim() || pillars.length === 0}
               >
-                Add
+                {t("wizard.nav.add")}
               </NavButton>
             </div>
           </div>
 
           <div className="flex items-center justify-between mt-6">
             <NavButton variant="secondary" onClick={() => setStep(1)}>
-              <ArrowLeft className="w-4 h-4" /> Back
+              <ArrowLeft className="w-4 h-4" /> {t("wizard.nav.back")}
             </NavButton>
             <Dots total={STEPS.length} current={step} />
             <NavButton
@@ -1200,7 +1266,7 @@ export function Wizard({ onComplete, onClose }: Props) {
               disabled={pillars.length === 0 || agentRunning}
               onClick={() => void goToCalibration()}
             >
-              Next <ArrowRight className="w-4 h-4" />
+              {t("wizard.nav.next")} <ArrowRight className="w-4 h-4" />
             </NavButton>
           </div>
         </WizardCard>
@@ -1210,11 +1276,10 @@ export function Wizard({ onComplete, onClose }: Props) {
       {step === 3 && (
         <WizardCard wide>
           <h2 className="text-xl font-bold text-stone-900 dark:text-stone-100 text-center">
-            Calibrate your feed
+            {t("wizard.calibrate.title")}
           </h2>
           <p className="text-sm text-stone-500 dark:text-stone-400 text-center mt-2 mb-6">
-            Rate the &ldquo;what this means for you&rdquo; line on each sample — thumbs up if it
-            feels right for your work, down if it misses the mark.
+            {t("wizard.calibrate.subtitle")}
           </p>
 
           <div className="space-y-2 max-h-80 overflow-y-auto">
@@ -1267,11 +1332,11 @@ export function Wizard({ onComplete, onClose }: Props) {
 
           <div className="flex items-center justify-between mt-8">
             <NavButton variant="secondary" onClick={() => setStep(2)}>
-              <ArrowLeft className="w-4 h-4" /> Back
+              <ArrowLeft className="w-4 h-4" /> {t("wizard.nav.back")}
             </NavButton>
             <Dots total={STEPS.length} current={step} />
             <NavButton variant="primary" onClick={() => void finishWizard()}>
-              Finish setup <Check className="w-4 h-4" />
+              {t("wizard.calibrate.finish")} <Check className="w-4 h-4" />
             </NavButton>
           </div>
         </WizardCard>

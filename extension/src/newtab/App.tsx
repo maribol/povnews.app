@@ -36,6 +36,7 @@ import { DEFAULT_POV } from "../types/defaultPov";
 import type { DigestItem, ItemRating, PillarDriftAlert } from "../types/pov";
 import { searchDigests } from "../utils/search";
 import { digestToMarkdown, downloadMarkdown } from "../utils/exportMarkdown";
+import { useTranslation } from "../i18n/useTranslation";
 
 const POLL_INTERVAL_MS = 10_000;
 
@@ -106,6 +107,7 @@ function ThemeToggle({
 }
 
 export function App() {
+  const { t } = useTranslation();
   const [onboardingComplete, setOnboardingComplete] = useStorage(
     STORAGE_KEYS.onboardingComplete,
   );
@@ -117,6 +119,7 @@ export function App() {
   const [theme] = useStorage(STORAGE_KEYS.theme);
   const [viewMode] = useStorage(STORAGE_KEYS.viewMode);
   const [archivedIds] = useStorage(STORAGE_KEYS.archivedItemIds);
+  const [readIds] = useStorage(STORAGE_KEYS.readItemIds);
 
   const [sidebarFilter, setSidebarFilter] = useState<SidebarFilter>({ kind: "all" });
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -146,11 +149,14 @@ export function App() {
       setToast({
         id: `success-${runState.finishedAt ?? Date.now()}`,
         kind: "success",
-        title: "Digest updated",
+        title: t("app.digestUpdatedTitle"),
         message: runState.itemCount
-          ? `${runState.itemCount} new item${runState.itemCount === 1 ? "" : "s"} added`
-          : "Digest run completed",
-        actionLabel: "View run",
+          ? t(
+              runState.itemCount === 1 ? "app.itemsAddedOne" : "app.itemsAddedMany",
+              { count: runState.itemCount },
+            )
+          : t("app.digestRunCompleted"),
+        actionLabel: t("app.viewRun"),
         onAction: () => setSidebarFilter({ kind: "agent" }),
       });
       const timer = setTimeout(() => setShowSuccess(false), 2500);
@@ -168,15 +174,15 @@ export function App() {
       setToast({
         id: `error-${runState.finishedAt}`,
         kind: "error",
-        title: "Digest run failed",
+        title: t("app.digestRunFailedTitle"),
         message: friendly,
-        actionLabel: "View details",
+        actionLabel: t("app.viewDetails"),
         onAction: () => {
           setSidebarFilter({ kind: "agent" });
         },
       });
     }
-  }, [runState?.status, runState?.finishedAt, runState?.error, runState?.itemCount]);
+  }, [runState?.status, runState?.finishedAt, runState?.error, runState?.itemCount, t]);
 
   useEffect(() => {
     const digestRunning =
@@ -386,7 +392,7 @@ export function App() {
         setToast({
           id: `refresh-${Date.now()}`,
           kind: "error",
-          title: "Could not start refresh",
+          title: t("app.refreshFailedTitle"),
           message,
         });
       }
@@ -518,21 +524,23 @@ export function App() {
 
   const crumbLabel =
     sidebarFilter.kind === "all"
-      ? "All items"
+      ? t("app.crumbAllItems")
       : sidebarFilter.kind === "archived"
-        ? "Archived"
+        ? t("app.crumbArchived")
         : sidebarFilter.kind === "agent"
-          ? "Agent"
+          ? t("app.crumbAgent")
           : effectivePov.pillars.find((p) => p.slug === sidebarFilter.slug)?.name ??
-            "Pillar";
+            t("app.crumbPillar");
 
   const statusLabel = digestRunning
       ? runState?.streamingItemCount
-        ? `Researching… ${runState.streamingItemCount} new`
-        : `Running ${runState?.kind ?? "digest"}…`
+        ? t("app.statusResearching", { count: runState.streamingItemCount })
+        : t("app.statusRunning", { kind: runState?.kind ?? "digest" })
       : runState?.status === "succeeded"
-        ? `Updated ${runState.finishedAt ? new Date(runState.finishedAt).toLocaleString() : ""}`
-        : "Ready";
+        ? t("app.statusUpdated", {
+            time: runState.finishedAt ? new Date(runState.finishedAt).toLocaleString() : "",
+          })
+        : t("app.statusReady");
 
   return (
     <div className="h-full flex flex-col bg-stone-50 dark:bg-stone-950">
@@ -554,8 +562,8 @@ export function App() {
           setToast({
             id: `copy-${Date.now()}`,
             kind: "success",
-            title: "Link copied",
-            message: "Article URL copied to clipboard",
+            title: t("app.linkCopiedTitle"),
+            message: t("app.linkCopiedMessage"),
           })
         }
       />
@@ -563,7 +571,7 @@ export function App() {
       <header className="shrink-0 grid grid-cols-[minmax(0,1fr)_minmax(12rem,22rem)_minmax(0,1fr)] items-center gap-3 px-5 py-3 border-b border-stone-200/80 dark:border-stone-800/80 bg-white/80 dark:bg-stone-900/80 backdrop-blur-sm z-10 relative">
         <div className="flex items-center gap-3 min-w-0">
           <nav
-            aria-label="Breadcrumb"
+            aria-label={t("app.breadcrumb")}
             className="flex items-center gap-1.5 shrink-0 min-w-0"
           >
             <h1 className="text-sm font-bold text-stone-900 dark:text-stone-100 tracking-tight">
@@ -585,7 +593,7 @@ export function App() {
                 onClick={() => setSidebarFilter({ kind: "agent" })}
                 className="ml-2 text-indigo-500 dark:text-indigo-400 hover:underline font-medium"
               >
-                Agent
+                {t("app.agentLink")}
               </button>
             )}
             {runState?.status === "failed" && sidebarFilter.kind !== "agent" && (
@@ -594,7 +602,7 @@ export function App() {
                 onClick={() => setSidebarFilter({ kind: "agent" })}
                 className="ml-2 text-rose-500 dark:text-rose-400 hover:underline font-medium"
               >
-                Details
+                {t("app.detailsLink")}
               </button>
             )}
           </span>
@@ -604,7 +612,7 @@ export function App() {
           <button
             type="button"
             onClick={() => setPaletteOpen(true)}
-            aria-label="Search digests"
+            aria-label={t("app.searchDigests")}
             className="group w-full flex items-center gap-2 pl-8 pr-2 py-1.5 text-sm rounded-lg bg-stone-50 dark:bg-stone-800 border border-stone-200 dark:border-stone-700 text-stone-400 hover:border-stone-300 dark:hover:border-stone-600 transition-colors relative"
           >
             <Search
@@ -612,13 +620,13 @@ export function App() {
               strokeWidth={1.75}
             />
             <span className="flex-1 text-left truncate text-stone-500 dark:text-stone-400">
-              {searchQuery.trim() ? searchQuery : "Search digests…"}
+              {searchQuery.trim() ? searchQuery : t("app.searchPlaceholder")}
             </span>
             {searchQuery.trim() ? (
               <span
                 role="button"
                 tabIndex={0}
-                aria-label="Clear search"
+                aria-label={t("app.clearSearch")}
                 onClick={(e) => {
                   e.stopPropagation();
                   setSearchQuery("");
@@ -655,10 +663,10 @@ export function App() {
           }`}
           aria-label={
             digestRunning
-              ? "Researching news…"
+              ? t("app.researching")
               : showSuccess
-                ? "Digest updated!"
-                : "Refresh now"
+                ? t("app.digestUpdated")
+                : t("app.refreshNow")
           }
           onClick={() => void handleRefresh()}
           disabled={digestRunning}
@@ -673,16 +681,16 @@ export function App() {
           )}
           <span className="pointer-events-none absolute -bottom-8 left-1/2 -translate-x-1/2 whitespace-nowrap rounded bg-stone-800 dark:bg-stone-200 px-2 py-1 text-[10px] text-white dark:text-stone-900 opacity-0 group-hover:opacity-100 transition-opacity z-50">
             {digestRunning
-              ? "Researching news…"
+              ? t("app.researching")
               : showSuccess
-                ? "Digest updated!"
-                : "Refresh now"}
+                ? t("app.digestUpdated")
+                : t("app.refreshNow")}
           </span>
         </button>
         <button
           type="button"
           className="p-2 rounded-lg text-stone-400 hover:text-stone-600 dark:hover:text-stone-300 hover:bg-stone-100 dark:hover:bg-stone-800 transition-colors"
-          aria-label="Settings"
+          aria-label={t("app.settings")}
           onClick={() => chrome.runtime.openOptionsPage()}
         >
           <Settings className="w-4 h-4" strokeWidth={1.75} />
@@ -728,7 +736,7 @@ export function App() {
                     <AgentActivityFeed
                       active
                       seed={runState?.activityLog ?? []}
-                      title="Researching news for you"
+                      title={t("app.researchingForYou")}
                       startedAt={runState?.startedAt}
                       streamingItemCount={runState?.streamingItemCount}
                       onStop={() => void handleStop()}
@@ -743,6 +751,7 @@ export function App() {
                 items={filteredItems}
                 selectedId={selectedItem?.id ?? null}
                 ratings={ratings ?? {}}
+                readIds={readIds ?? []}
                 viewMode={effectiveViewMode}
                 pov={effectivePov}
                 archivedView={sidebarFilter.kind === "archived"}

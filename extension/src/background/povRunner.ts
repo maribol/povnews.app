@@ -5,6 +5,25 @@ import {
   filterSourcesForReader,
   resolveReaderPreferences,
 } from "../utils/readerPreferences";
+import { contentLanguageName, type Language } from "../i18n/languages";
+
+/**
+ * Instruction block telling the agent to write all reader-facing fields in the
+ * user's chosen language. Empty for English (the prompts default to English).
+ */
+function languageInstruction(language: Language = "en"): string {
+  if (language === "en") return "";
+  const name = contentLanguageName(language);
+  return `## Output language — write in ${name}
+
+Write EVERY reader-facing field in **${name}**: \`title\`, \`summary\`, \`whyItMatters\`, \`quotableSnippet\`, and \`audienceFit\`. The reader speaks ${name}; do not output English in these fields.
+- Translate naturally and idiomatically, the way a native ${name} speaker who knows this person's work would write. Keep the warm, friend-talking-to-you voice in ${name} — not a stiff, literal translation.
+- Keep proper nouns, brand names, product names, and established acronyms (GLP-1, FTC, ROAS, SaaS) in their original form.
+- \`quotableSnippet\`: give a faithful ${name} translation of the source line so the reader can read it in their language.
+- Keep all non-language fields exactly as specified (\`id\`, \`url\`, \`pillarSlug\`, \`pillarName\`, \`score\`, \`scoreBreakdown\`, dates).
+- The punctuation rules still apply in ${name}: no em-dashes, no ellipses.
+`;
+}
 
 const rawModules = import.meta.glob("../../prompts/**/*.md", {
   query: "?raw",
@@ -103,7 +122,11 @@ function trimPrompt(prompt: string, maxChars: number): string {
   return `${prompt.slice(0, maxChars - 20)}\n\n[trimmed]`;
 }
 
-export function buildSubagentPrompt(categorySlug: string, pov: UserPOV): string {
+export function buildSubagentPrompt(
+  categorySlug: string,
+  pov: UserPOV,
+  language: Language = "en",
+): string {
   const base = readPrompt("subagent.md");
   const filled = (base || `Research ${categorySlug}. Return JSON array.`).replaceAll(
     "{{category_slug}}",
@@ -115,6 +138,7 @@ export function buildSubagentPrompt(categorySlug: string, pov: UserPOV): string 
   const minScore = pov.scoringRubric?.minScore ?? 6;
   const recencyDays = pov.scoringRubric?.recencyDays ?? 30;
 
+  const langBlock = languageInstruction(language);
   const build = (slim: ReturnType<typeof slimPovForSubagent>, guide: string) =>
     `${filled}
 
@@ -123,7 +147,7 @@ ${guide}
 
 ## Scoring
 Score pillarFit, audienceFit, founderVoiceMatch, recency, conversationPotential (0–3 each, max 15). Drop total < ${minScore}. Recency: ${recencyDays} days.
-
+${langBlock ? `\n${langBlock}` : ""}
 ## User POV
 \`\`\`json
 ${JSON.stringify(slim)}
@@ -145,7 +169,7 @@ ${JSON.stringify(slim)}
   return trimPrompt(prompt, MAX_SUBAGENT_PROMPT_CHARS);
 }
 
-export function buildParentPrompt(pov: UserPOV): string {
+export function buildParentPrompt(pov: UserPOV, language: Language = "en"): string {
   let prompt = readPrompt("parent.md");
   if (!prompt) {
     prompt =
@@ -162,7 +186,8 @@ export function buildParentPrompt(pov: UserPOV): string {
 
   const feedbackBlock = buildFeedbackBlock(pov);
   const povBlock = JSON.stringify(slimPovForParent(pov));
-  return `${prompt}\n\n## User POV (inject into scoring and "what this means for you" / whyItMatters)\n\`\`\`json\n${povBlock}\n\`\`\`${feedbackBlock ? `\n\n${feedbackBlock}` : ""}`;
+  const langBlock = languageInstruction(language);
+  return `${prompt}${langBlock ? `\n\n${langBlock}` : ""}\n\n## User POV (inject into scoring and "what this means for you" / whyItMatters)\n\`\`\`json\n${povBlock}\n\`\`\`${feedbackBlock ? `\n\n${feedbackBlock}` : ""}`;
 }
 
 /** Candidate shape sent to the agent — compact, with a stable id. */
@@ -198,6 +223,7 @@ function toScoringCandidates(candidates: CandidateArticle[], limit: number): Sco
 export function buildScoringPrompt(
   pov: UserPOV,
   candidates: CandidateArticle[],
+  language: Language = "en",
 ): string {
   const brandVoice = readPrompt("context/brand-voice.md");
   const povFraming = readPrompt("context/pov-framing.md");
@@ -235,6 +261,7 @@ ${brandVoice}
 
 No "yo", no slang, no corporate filler ("leverage", "adjacency", "stacking fast", "pattern-match"), no "this could be relevant if…". Be specific about the actual implication for them, in words a person would actually say.
 
+${languageInstruction(language)}
 ## User POV
 \`\`\`json
 ${povBlock}
@@ -427,7 +454,10 @@ Output JSON in your response — do NOT write files.`,
   ];
 }
 
-export function subagentDefinitions(pov: UserPOV): import("./cursorClient").SubagentInput[] {
+export function subagentDefinitions(
+  pov: UserPOV,
+  language: Language = "en",
+): import("./cursorClient").SubagentInput[] {
   const categories = [
     "reddit-pain-language",
     "regulatory-platform-changes",
@@ -437,6 +467,6 @@ export function subagentDefinitions(pov: UserPOV): import("./cursorClient").Suba
   return categories.map((slug) => ({
     name: slug,
     description: `Research source category: ${slug}`,
-    prompt: buildSubagentPrompt(slug, pov),
+    prompt: buildSubagentPrompt(slug, pov, language),
   }));
 }

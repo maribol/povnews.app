@@ -3,6 +3,7 @@ import { Search } from "lucide-react";
 import type { Digest, DigestItem } from "../types/pov";
 import { searchDigests } from "../utils/search";
 import { ItemThumbnail } from "./components/ItemMedia";
+import { useTranslation } from "../i18n/useTranslation";
 
 type Props = {
   open: boolean;
@@ -36,6 +37,7 @@ export function CommandPalette({
   initialQuery,
   onChoose,
 }: Props) {
+  const { t } = useTranslation();
   const [query, setQuery] = useState(initialQuery);
   const [selected, setSelected] = useState(0);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -106,7 +108,7 @@ export function CommandPalette({
         className="w-full max-w-xl overflow-hidden rounded-2xl border border-stone-200 dark:border-stone-700 bg-white dark:bg-stone-900 shadow-2xl"
         role="dialog"
         aria-modal="true"
-        aria-label="Search digests"
+        aria-label={t("palette.searchAriaLabel")}
         onClick={(e) => e.stopPropagation()}
       >
         {/* Input */}
@@ -121,7 +123,7 @@ export function CommandPalette({
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             onKeyDown={onKey}
-            placeholder="Search digests…"
+            placeholder={t("palette.searchPlaceholder")}
             className="flex-1 bg-transparent text-[15px] text-stone-900 dark:text-stone-100 outline-none placeholder:text-stone-400"
           />
           <Kbd>esc</Kbd>
@@ -131,13 +133,13 @@ export function CommandPalette({
         <div ref={listRef} className="max-h-[56vh] overflow-y-auto py-2">
           {results.length === 0 ? (
             <div className="px-4 py-10 text-center text-sm text-stone-400">
-              {query.trim() ? "No matches." : "No items yet."}
+              {query.trim() ? t("palette.noMatches") : t("palette.noItems")}
             </div>
           ) : (
             <>
               {!query.trim() && (
                 <div className="px-4 pb-1 pt-2 text-[10px] font-semibold uppercase tracking-[0.12em] text-stone-400">
-                  Recent
+                  {t("palette.recent")}
                 </div>
               )}
               {results.map((item, idx) => (
@@ -183,13 +185,13 @@ export function CommandPalette({
         <div className="flex items-center gap-4 border-t border-stone-100 dark:border-stone-800 bg-stone-50/70 dark:bg-stone-800/30 px-4 py-2.5 text-[11px] text-stone-400">
           <span className="flex items-center gap-1">
             <Kbd>↑</Kbd>
-            <Kbd>↓</Kbd> Navigate
+            <Kbd>↓</Kbd> {t("palette.navigate")}
           </span>
           <span className="flex items-center gap-1">
-            <Kbd>↵</Kbd> Open
+            <Kbd>↵</Kbd> {t("palette.open")}
           </span>
           <span className="flex items-center gap-1">
-            <Kbd>{isMac ? "⌘" : "Ctrl"} K</Kbd> Toggle
+            <Kbd>{isMac ? "⌘" : "Ctrl"} K</Kbd> {t("palette.toggle")}
           </span>
         </div>
       </div>

@@ -8,6 +8,7 @@ import type {
   UserPOV,
 } from "../types/pov";
 import { DEFAULT_POV } from "../types/defaultPov";
+import { normalizeLanguage } from "../i18n/languages";
 import type { FeedbackRecord } from "./feedback";
 
 export const STORAGE_KEYS = {
@@ -37,6 +38,7 @@ export const STORAGE_KEYS = {
   stats: "engagementStats",
   lastCandidates: "lastCandidates",
   readItemIds: "readItemIds",
+  language: "language",
 } as const;
 
 export type ThemePreference = "light" | "dark" | "system";
@@ -125,6 +127,7 @@ export type StoredSchema = {
   [STORAGE_KEYS.stats]?: StatsState;
   [STORAGE_KEYS.lastCandidates]?: StoredCandidate[];
   [STORAGE_KEYS.readItemIds]?: string[];
+  [STORAGE_KEYS.language]?: import("../i18n/languages").Language;
 };
 
 export type ActivityEntry = {
@@ -211,6 +214,11 @@ export async function ensureSeedData(): Promise<void> {
   const theme = await getFromStorage(STORAGE_KEYS.theme);
   if (!theme) {
     await setInStorage(STORAGE_KEYS.theme, "system");
+  }
+
+  const language = await getFromStorage(STORAGE_KEYS.language);
+  if (!language) {
+    await setInStorage(STORAGE_KEYS.language, normalizeLanguage(chrome.i18n?.getUILanguage?.()));
   }
 
   const viewMode = await getFromStorage(STORAGE_KEYS.viewMode);

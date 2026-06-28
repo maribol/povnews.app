@@ -66,6 +66,9 @@ export type DigestItem = {
   imageUrl?: string;
   /** Site favicon from source page */
   faviconUrl?: string;
+  /** ISO timestamp of when this item was first added to the digest. Used to
+   * show an "added" date and flag newly-arrived items. */
+  addedAt?: string;
 };
 
 export type DigestPillarSummary = {

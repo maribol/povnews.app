@@ -2,6 +2,8 @@ import { useEffect } from "react";
 import { Copy, Link2, Mail, MessageCircle, Share2, X } from "lucide-react";
 import type { DigestItem } from "../types/pov";
 import { shareUrl, type ShareChannel } from "../utils/shareUrl";
+import { useTranslation } from "../i18n/useTranslation";
+import type { Translator } from "../i18n";
 
 type Props = {
   item: DigestItem | null;
@@ -20,11 +22,12 @@ type ShareAction = {
   copy?: boolean;
 };
 
-const SHARE_ACTIONS: ShareAction[] = [
+function buildShareActions(t: Translator): ShareAction[] {
+  return [
   {
     id: "whatsapp",
     label: "WhatsApp",
-    description: "Send in a chat",
+    description: t("share.whatsappDesc"),
     icon: MessageCircle,
     className:
       "bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-100 dark:hover:bg-emerald-900/40",
@@ -36,7 +39,7 @@ const SHARE_ACTIONS: ShareAction[] = [
   {
     id: "facebook",
     label: "Facebook",
-    description: "Share to feed",
+    description: t("share.facebookDesc"),
     icon: Share2,
     className:
       "bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300 hover:bg-blue-100 dark:hover:bg-blue-900/40",
@@ -46,7 +49,7 @@ const SHARE_ACTIONS: ShareAction[] = [
   {
     id: "twitter",
     label: "X / Twitter",
-    description: "Post a link",
+    description: t("share.twitterDesc"),
     icon: Link2,
     className:
       "bg-stone-100 dark:bg-stone-800 text-stone-800 dark:text-stone-100 hover:bg-stone-200 dark:hover:bg-stone-700",
@@ -58,7 +61,7 @@ const SHARE_ACTIONS: ShareAction[] = [
   {
     id: "linkedin",
     label: "LinkedIn",
-    description: "Share professionally",
+    description: t("share.linkedinDesc"),
     icon: Share2,
     className:
       "bg-sky-50 dark:bg-sky-900/20 text-sky-700 dark:text-sky-300 hover:bg-sky-100 dark:hover:bg-sky-900/40",
@@ -67,8 +70,8 @@ const SHARE_ACTIONS: ShareAction[] = [
   },
   {
     id: "email",
-    label: "Email",
-    description: "Open in mail app",
+    label: t("share.emailLabel"),
+    description: t("share.emailDesc"),
     icon: Mail,
     className:
       "bg-amber-50 dark:bg-amber-900/20 text-amber-800 dark:text-amber-300 hover:bg-amber-100 dark:hover:bg-amber-900/40",
@@ -79,16 +82,18 @@ const SHARE_ACTIONS: ShareAction[] = [
   },
   {
     id: "copy",
-    label: "Copy link",
-    description: "Copy URL to clipboard",
+    label: t("share.copyLabel"),
+    description: t("share.copyDesc"),
     icon: Copy,
     className:
       "bg-indigo-50 dark:bg-indigo-900/20 text-indigo-700 dark:text-indigo-300 hover:bg-indigo-100 dark:hover:bg-indigo-900/40",
     copy: true,
   },
-];
+  ];
+}
 
 export function ShareModal({ item, open, onClose, onCopied }: Props) {
+  const { t } = useTranslation();
   useEffect(() => {
     if (!open) return;
     const onKey = (e: KeyboardEvent) => {
@@ -104,6 +109,7 @@ export function ShareModal({ item, open, onClose, onCopied }: Props) {
   if (!open || !item) return null;
 
   const copyUrl = shareUrl(item.url, "copy");
+  const shareActions = buildShareActions(t);
 
   async function handleAction(action: ShareAction): Promise<void> {
     if (action.copy) {
@@ -141,7 +147,7 @@ export function ShareModal({ item, open, onClose, onCopied }: Props) {
               id="share-modal-title"
               className="text-sm font-semibold text-stone-900 dark:text-stone-100"
             >
-              Share article
+              {t("share.title")}
             </h2>
             <p className="text-xs text-stone-500 dark:text-stone-400 mt-1 line-clamp-2">
               {item.title}
@@ -151,14 +157,14 @@ export function ShareModal({ item, open, onClose, onCopied }: Props) {
             type="button"
             onClick={onClose}
             className="p-1.5 rounded-lg text-stone-400 hover:text-stone-600 dark:hover:text-stone-300 hover:bg-stone-100 dark:hover:bg-stone-800"
-            aria-label="Close"
+            aria-label={t("share.close")}
           >
             <X className="w-4 h-4" />
           </button>
         </div>
 
         <div className="p-3 grid grid-cols-2 gap-2">
-          {SHARE_ACTIONS.map((action) => {
+          {shareActions.map((action) => {
             const Icon = action.icon;
             return (
               <button

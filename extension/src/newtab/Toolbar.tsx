@@ -1,6 +1,7 @@
 import { Download, LayoutGrid, List, Rows3 } from "lucide-react";
 import type { ViewMode } from "../types/pov";
 import { Tooltip } from "../design/components/Tooltip";
+import { useTranslation } from "../i18n/useTranslation";
 
 type Props = {
   viewMode: ViewMode;
@@ -8,20 +9,21 @@ type Props = {
   onExport: () => void;
 };
 
-const SHORTCUTS: [string, string][] = [
-  ["↑↓", "navigate"],
-  ["←→", "back / expand"],
-  ["⇧S", "share"],
-  ["T", "like"],
-  ["X", "archive"],
-  ["O", "open"],
-];
-
 export function Toolbar({ viewMode, onViewModeChange, onExport }: Props) {
+  const { t } = useTranslation();
+  const shortcuts: [string, string][] = [
+    ["↑↓", t("toolbar.navigate")],
+    ["←→", t("toolbar.backExpand")],
+    ["⇧S", t("toolbar.share")],
+    ["T", t("toolbar.like")],
+    ["X", t("toolbar.dislike")],
+    ["A", t("toolbar.archive")],
+    ["O", t("toolbar.open")],
+  ];
   return (
     <div className="shrink-0 flex items-center gap-3 px-4 py-2 border-b border-stone-200/70 dark:border-stone-800/70 bg-white/70 dark:bg-stone-900/70 backdrop-blur-sm">
       <div className="flex-1 flex items-center gap-2.5 overflow-hidden">
-        {SHORTCUTS.map(([key, label]) => (
+        {shortcuts.map(([key, label]) => (
           <span
             key={key}
             className="hidden sm:inline-flex items-center gap-1 text-[11px] text-stone-400 dark:text-stone-500 whitespace-nowrap"
@@ -33,16 +35,16 @@ export function Toolbar({ viewMode, onViewModeChange, onExport }: Props) {
           </span>
         ))}
         <span className="text-[11px] text-stone-400 dark:text-stone-500 whitespace-nowrap">
-          or just type to search
+          {t("toolbar.typeToSearch")}
         </span>
       </div>
 
       <div className="flex bg-stone-100 dark:bg-stone-800 rounded-lg p-0.5">
         {(
           [
-            ["list", List, "List view"],
-            ["compact", Rows3, "Compact view"],
-            ["grid", LayoutGrid, "Grid view"],
+            ["list", List, t("toolbar.listView")],
+            ["compact", Rows3, t("toolbar.compactView")],
+            ["grid", LayoutGrid, t("toolbar.gridView")],
           ] as const
         ).map(([mode, Icon, label]) => (
           <Tooltip key={mode} label={label} placement="bottom">
@@ -61,10 +63,10 @@ export function Toolbar({ viewMode, onViewModeChange, onExport }: Props) {
           </Tooltip>
         ))}
       </div>
-      <Tooltip label="Export as Markdown" placement="bottom">
+      <Tooltip label={t("toolbar.exportTooltip")} placement="bottom">
         <button
           type="button"
-          aria-label="Export markdown"
+          aria-label={t("toolbar.exportLabel")}
           onClick={onExport}
           className="p-2 rounded-lg text-stone-400 hover:text-stone-600 dark:hover:text-stone-300 hover:bg-stone-100 dark:hover:bg-stone-800 transition-colors"
         >

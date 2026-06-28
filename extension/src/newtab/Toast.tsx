@@ -1,5 +1,6 @@
 import { useEffect } from "react";
 import { AlertCircle, CheckCircle2, X } from "lucide-react";
+import { useTranslation } from "../i18n/useTranslation";
 
 export type ToastPayload = {
   id: string;
@@ -16,6 +17,7 @@ type Props = {
 };
 
 export function Toast({ toast, onDismiss }: Props) {
+  const { t } = useTranslation();
   useEffect(() => {
     if (!toast) return;
     const ms = toast.kind === "error" && toast.actionLabel ? 12_000 : 6_000;
@@ -71,7 +73,7 @@ export function Toast({ toast, onDismiss }: Props) {
             type="button"
             onClick={onDismiss}
             className="p-1 rounded-lg text-stone-400 hover:text-stone-600 dark:hover:text-stone-300 hover:bg-stone-100 dark:hover:bg-stone-800 transition-colors shrink-0"
-            aria-label="Dismiss"
+            aria-label={t("toast.dismiss")}
           >
             <X className="w-3.5 h-3.5" />
           </button>

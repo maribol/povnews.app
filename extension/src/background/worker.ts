@@ -49,6 +49,7 @@ import {
   markItemRead,
 } from "../storage/schema";
 import type { ActivityEntry, StoredCandidate } from "../storage/schema";
+import { normalizeLanguage } from "../i18n/languages";
 import { normalizeUrl } from "../utils/url";
 import { extractJsonFromText } from "./jsonExtract";
 import {
@@ -779,6 +780,8 @@ async function startAgentRun(
   let sourcesScanned: number | undefined;
   let candidatesFound: number | undefined;
 
+  const language = normalizeLanguage(await getFromStorage(STORAGE_KEYS.language));
+
   if (kind === "digest") {
     // Phase 1: real, client-side discovery (no LLM, no hallucinated URLs).
     const disco = await runClientDiscovery(pov);
@@ -787,13 +790,13 @@ async function startAgentRun(
 
     if (disco.candidates.length > 0) {
       // Phase 2: cloud agent only scores + writes the real candidates.
-      promptText = buildScoringPrompt(pov, disco.candidates);
+      promptText = buildScoringPrompt(pov, disco.candidates, language);
       subagents = undefined;
       discoveryMode = "client";
     } else {
       // Fallback: no sources produced anything → let the agent search the web.
-      promptText = buildParentPrompt(pov);
-      subagents = subagentDefinitions(pov);
+      promptText = buildParentPrompt(pov, language);
+      subagents = subagentDefinitions(pov, language);
       discoveryMode = "agent";
     }
 
@@ -813,7 +816,7 @@ async function startAgentRun(
     promptText = buildProfilePrompt(aboutText, urls);
     subagents = profileSubagentDefinitions(aboutText, urls);
   } else {
-    promptText = buildParentPrompt(pov);
+    promptText = buildParentPrompt(pov, language);
   }
 
   try {
@@ -1153,10 +1156,12 @@ async function pollActiveRun(): Promise<void> {
         addedCount = merged.added;
         await onItemsDelivered(merged.addedItems);
       } else if (!baseExisting && parsed.items?.length) {
+        const stampedAt = new Date().toISOString();
         const digest: Digest = {
           ...parsed,
           generatedAt: new Date().toISOString(),
           runId: state.runId ?? parsed.runId ?? `run-${Date.now()}`,
+          items: parsed.items.map((it) => ({ ...it, addedAt: it.addedAt ?? stampedAt })),
         };
         await setInStorage(STORAGE_KEYS.latestDigest, digest);
         await upsertDigestHistory(digest);

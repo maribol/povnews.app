@@ -101,7 +101,10 @@ export function mergeStreamingDigest(
   for (const item of existing?.items ?? []) {
     for (const key of itemKeys(item)) seen.add(key);
   }
-  const toAdd = incoming.filter((item) => !itemKeys(item).some((key) => seen.has(key)));
+  const addedAt = new Date().toISOString();
+  const toAdd = incoming
+    .filter((item) => !itemKeys(item).some((key) => seen.has(key)))
+    .map((item) => ({ ...item, addedAt: item.addedAt ?? addedAt }));
   if (toAdd.length === 0) return null;
 
   const items = [...toAdd, ...(existing?.items ?? [])];

@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 import type { ActivityEntry } from "../storage/schema";
 import { useAgentActivity } from "../newtab/hooks/useAgentActivity";
+import { useTranslation } from "../i18n/useTranslation";
 import {
   condenseIncomingToolEntry,
   elapsedSecondsSince,
@@ -112,6 +113,7 @@ export function condenseActivityFeed(
 const COMMAND_PREVIEW_LEN = 140;
 
 function CommandDetail({ command }: { command: string }) {
+  const { t } = useTranslation();
   const [expanded, setExpanded] = useState(false);
   const isLong = command.length > COMMAND_PREVIEW_LEN || command.includes("\n");
   const shown =
@@ -128,7 +130,7 @@ function CommandDetail({ command }: { command: string }) {
           onClick={() => setExpanded((v) => !v)}
           className="mt-0.5 text-[11px] font-medium text-indigo-500 hover:text-indigo-600 dark:text-indigo-400"
         >
-          {expanded ? "Show less" : "Show full command"}
+          {expanded ? t("activity.showLess") : t("activity.showFullCommand")}
         </button>
       )}
     </div>
@@ -303,7 +305,7 @@ export function AgentActivityFeed({
   active,
   seed = [],
   title,
-  generatingLabel = "Generating digest…",
+  generatingLabel: generatingLabelProp,
   elapsed: elapsedProp,
   startedAt,
   streamingItemCount = 0,
@@ -313,8 +315,11 @@ export function AgentActivityFeed({
   collapsible = true,
   maxHeight = "max-h-64",
   className = "",
-  emptyMessage = "Connecting to agent…",
+  emptyMessage: emptyMessageProp,
 }: Props) {
+  const { t } = useTranslation();
+  const generatingLabel = generatingLabelProp ?? t("activity.generatingDigest");
+  const emptyMessage = emptyMessageProp ?? t("activity.connecting");
   const [collapsed, setCollapsed] = useState(false);
   const [elapsedLocal, setElapsedLocal] = useState(() => elapsedSecondsSince(startedAt));
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -386,12 +391,14 @@ export function AgentActivityFeed({
             <span className="tabular-nums">{formatElapsedSeconds(elapsed)}</span>
             {doneCount > 0 && (
               <span className="text-emerald-500 dark:text-emerald-400">
-                {doneCount} step{doneCount !== 1 ? "s" : ""} done
+                {doneCount !== 1
+                  ? t("activity.stepsDone", { count: doneCount })
+                  : t("activity.stepDone", { count: doneCount })}
               </span>
             )}
             {streamingItemCount > 0 && (
               <span className="text-indigo-500 dark:text-indigo-400">
-                {streamingItemCount} new in feed
+                {t("activity.newInFeed", { count: streamingItemCount })}
               </span>
             )}
           </div>
@@ -402,7 +409,7 @@ export function AgentActivityFeed({
             onClick={onOpenDetails}
             className="px-2 py-1 rounded-lg text-indigo-600 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-900/30 font-medium text-xs transition-colors"
           >
-            Details
+            {t("activity.details")}
           </button>
         )}
         {collapsible && (
@@ -428,7 +435,7 @@ export function AgentActivityFeed({
             }`}
           >
             {cancelling ? <Loader2 className="w-3 h-3 animate-spin" /> : <Square className="w-3 h-3" />}
-            {cancelling ? "Stopping…" : "Stop"}
+            {cancelling ? t("activity.stopping") : t("activity.stop")}
           </button>
         )}
       </div>
