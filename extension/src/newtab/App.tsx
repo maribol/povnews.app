@@ -8,6 +8,7 @@ import {
   Monitor,
   Search,
   ChevronRight,
+  X,
 } from "lucide-react";
 import { Sidebar, type SidebarFilter } from "./Sidebar";
 import { ItemList } from "./ItemList";
@@ -16,13 +17,13 @@ import { Toolbar } from "./Toolbar";
 import { DriftBanner } from "./DriftBanner";
 import { RunsView } from "./RunsView";
 import { ShareModal } from "./ShareModal";
+import { CommandPalette } from "./CommandPalette";
 import { Toast, type ToastPayload } from "./Toast";
 import { AgentActivityFeed } from "../components/AgentActivityFeed";
 import { friendlyAgentError } from "../utils/agentActivity";
 import { sendToWorker } from "../utils/messaging";
 import { useStorage } from "./hooks/useStorage";
 import { useKeyboardShortcuts } from "./hooks/useKeyboardShortcuts";
-import { useTypeToSearch } from "./hooks/useTypeToSearch";
 import { Wizard } from "../onboarding/Wizard";
 import {
   STORAGE_KEYS,
@@ -37,6 +38,10 @@ import { searchDigests } from "../utils/search";
 import { digestToMarkdown, downloadMarkdown } from "../utils/exportMarkdown";
 
 const POLL_INTERVAL_MS = 10_000;
+
+const isMacPlatform =
+  typeof navigator !== "undefined" &&
+  navigator.platform.toLowerCase().includes("mac");
 
 function filtersMatch(a: SidebarFilter, b: SidebarFilter): boolean {
   if (a.kind !== b.kind) return false;
@@ -113,11 +118,11 @@ export function App() {
   const [stoppingRun, setStoppingRun] = useState(false);
   const [refreshPending, setRefreshPending] = useState(false);
   const [shareOpen, setShareOpen] = useState(false);
+  const [paletteOpen, setPaletteOpen] = useState(false);
   const prevStatusRef = useRef(runState?.status);
   const lastFailedAtRef = useRef<string | undefined>();
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const readerRef = useRef<ReaderPaneHandle>(null);
-  const searchRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (runState?.status === "running") setRefreshPending(false);
@@ -464,28 +469,39 @@ export function App() {
       onboardingComplete !== false &&
       !showWizard &&
       !shareOpen &&
+      !paletteOpen &&
       sidebarFilter.kind !== "agent",
   });
 
-  const searchShortcutsEnabled =
-    onboardingComplete !== false &&
-    !showWizard &&
-    !shareOpen &&
-    sidebarFilter.kind !== "agent";
+  // Cmd/Ctrl+K opens the search command palette from anywhere.
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && (e.key === "k" || e.key === "K")) {
+        e.preventDefault();
+        setPaletteOpen((prev) => !prev);
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, []);
 
-  useTypeToSearch(
-    searchRef,
-    (updater) => setSearchQuery(updater),
-    () => setSearchQuery(""),
-    searchShortcutsEnabled,
-  );
+  function handlePaletteChoose(item: DigestItem, query: string): void {
+    setSearchQuery(query);
+    setSidebarFilter(archived.has(item.id) ? { kind: "archived" } : { kind: "all" });
+    setSelectedId(item.id);
+    setPaletteOpen(false);
+  }
 
   if (onboardingComplete === false || showWizard) {
+    // Closeable only when editing an existing POV — not during first-run onboarding.
     return (
       <Wizard
         onComplete={() => {
           setShowWizard(false);
         }}
+        onClose={
+          onboardingComplete !== false ? () => setShowWizard(false) : undefined
+        }
       />
     );
   }
@@ -511,6 +527,15 @@ export function App() {
   return (
     <div className="h-full flex flex-col bg-stone-50 dark:bg-stone-950">
       <Toast toast={toast} onDismiss={() => setToast(null)} />
+      <CommandPalette
+        open={paletteOpen}
+        onClose={() => setPaletteOpen(false)}
+        history={history ?? []}
+        digest={digest}
+        archivedIds={archivedIds ?? []}
+        initialQuery={searchQuery}
+        onChoose={handlePaletteChoose}
+      />
       <ShareModal
         item={selectedItem}
         open={shareOpen}
@@ -566,19 +591,45 @@ export function App() {
         </div>
 
         <div className="relative w-full justify-self-center">
-          <Search
-            className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-stone-400"
-            strokeWidth={1.75}
-          />
-          <input
-            ref={searchRef}
-            type="search"
+          <button
+            type="button"
+            onClick={() => setPaletteOpen(true)}
             aria-label="Search digests"
-            className="w-full pl-8 pr-3 py-1.5 text-sm rounded-lg bg-stone-50 dark:bg-stone-800 border border-stone-200 dark:border-stone-700 text-stone-900 dark:text-stone-100 placeholder:text-stone-400 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-            placeholder="Search digests…"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-          />
+            className="group w-full flex items-center gap-2 pl-8 pr-2 py-1.5 text-sm rounded-lg bg-stone-50 dark:bg-stone-800 border border-stone-200 dark:border-stone-700 text-stone-400 hover:border-stone-300 dark:hover:border-stone-600 transition-colors relative"
+          >
+            <Search
+              className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-stone-400"
+              strokeWidth={1.75}
+            />
+            <span className="flex-1 text-left truncate text-stone-500 dark:text-stone-400">
+              {searchQuery.trim() ? searchQuery : "Search digests…"}
+            </span>
+            {searchQuery.trim() ? (
+              <span
+                role="button"
+                tabIndex={0}
+                aria-label="Clear search"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setSearchQuery("");
+                }}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" || e.key === " ") {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    setSearchQuery("");
+                  }
+                }}
+                className="shrink-0 p-0.5 rounded text-stone-400 hover:text-stone-600 dark:hover:text-stone-300"
+              >
+                <X className="w-3.5 h-3.5" />
+              </span>
+            ) : (
+              <kbd className="shrink-0 rounded border border-stone-200 dark:border-stone-700 bg-white dark:bg-stone-900 px-1.5 py-0.5 text-[10px] font-medium text-stone-400">
+                {isMacPlatform ? "⌘K" : "Ctrl K"}
+              </kbd>
+            )}
+          </button>
         </div>
 
         <div className="flex items-center justify-end gap-1">

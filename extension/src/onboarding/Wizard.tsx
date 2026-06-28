@@ -53,7 +53,7 @@ const ACCENTS: PillarAccent[] = ["slate", "emerald", "amber", "rose", "violet", 
 
 const POLL_INTERVAL_MS = 10_000;
 
-type Props = { onComplete: () => void };
+type Props = { onComplete: () => void; onClose?: () => void };
 
 function WizardCard({ children, wide }: { children: ReactNode; wide?: boolean }) {
   return (
@@ -268,7 +268,7 @@ function DigestTuneSection({
   );
 }
 
-export function Wizard({ onComplete }: Props) {
+export function Wizard({ onComplete, onClose }: Props) {
   const [step, setStep] = useState(0);
   const [apiKey, setApiKey] = useState("");
   const [apiError, setApiError] = useState<string | null>(null);
@@ -304,6 +304,22 @@ export function Wizard({ onComplete }: Props) {
   useEffect(() => {
     if (storedKey) setApiKey(storedKey);
   }, [storedKey]);
+
+  // Allow closing the wizard with Escape when it's being used to edit an
+  // existing POV (onClose is only provided in that case).
+  useEffect(() => {
+    if (!onClose) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        const tag = (e.target as HTMLElement | null)?.tagName;
+        if (tag === "INPUT" || tag === "TEXTAREA") return;
+        e.preventDefault();
+        onClose();
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [onClose]);
 
   // Restore wizard state on mount
   useEffect(() => {
@@ -662,6 +678,16 @@ export function Wizard({ onComplete }: Props) {
         POV News
       </h1>
       <span className="text-xs text-stone-400 dark:text-stone-500">Setup</span>
+      {onClose && (
+        <button
+          type="button"
+          onClick={onClose}
+          aria-label="Close setup"
+          className="ml-auto inline-flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium rounded-lg text-stone-500 dark:text-stone-400 hover:text-stone-700 dark:hover:text-stone-200 hover:bg-stone-100 dark:hover:bg-stone-800 transition-colors"
+        >
+          <X className="w-4 h-4" /> Close
+        </button>
+      )}
     </header>
     <div className="flex-1 overflow-y-auto">
     <input
@@ -759,45 +785,20 @@ export function Wizard({ onComplete }: Props) {
             <label className="flex items-center gap-1.5 text-xs font-medium uppercase tracking-wide text-stone-500 dark:text-stone-400 mb-2">
               <Cpu className="w-3.5 h-3.5" /> Cloud model
             </label>
-            <div className="space-y-1.5">
-              {modelOptions.map((m) => {
-                const active = m.id === cloudModel;
-                return (
-                  <button
-                    key={m.id}
-                    type="button"
-                    onClick={() => void selectModel(m.id)}
-                    className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg border text-left transition-colors ${
-                      active
-                        ? "bg-indigo-50 dark:bg-indigo-900/20 border-indigo-300 dark:border-indigo-700"
-                        : "bg-stone-50 dark:bg-stone-800 border-stone-200 dark:border-stone-700 hover:bg-stone-100 dark:hover:bg-stone-700"
-                    }`}
-                  >
-                    <span
-                      className={`w-3.5 h-3.5 rounded-full border-2 shrink-0 ${
-                        active
-                          ? "border-indigo-500 bg-indigo-500"
-                          : "border-stone-300 dark:border-stone-600"
-                      }`}
-                    />
-                    <span className="min-w-0 flex-1">
-                      <span className="flex items-center gap-2">
-                        <span className="text-sm font-medium text-stone-900 dark:text-stone-100 truncate">
-                          {m.label}
-                        </span>
-                        {m.recommended && (
-                          <span className="text-[10px] font-semibold uppercase tracking-wide text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-900/20 px-1.5 py-0.5 rounded">
-                            Default
-                          </span>
-                        )}
-                      </span>
-                      <span className="block text-xs text-stone-500 dark:text-stone-400 mt-0.5">
-                        {m.cost}
-                      </span>
-                    </span>
-                  </button>
-                );
-              })}
+            <div className="relative">
+              <select
+                value={cloudModel}
+                onChange={(e) => void selectModel(e.target.value)}
+                className="w-full appearance-none pl-3 pr-9 py-2.5 text-sm rounded-lg bg-stone-50 dark:bg-stone-800 border border-stone-200 dark:border-stone-700 text-stone-900 dark:text-stone-100 focus:outline-none focus:ring-2 focus:ring-indigo-500 cursor-pointer"
+              >
+                {modelOptions.map((m) => (
+                  <option key={m.id} value={m.id}>
+                    {m.label}
+                    {m.recommended ? " (default)" : ""} — {m.cost}
+                  </option>
+                ))}
+              </select>
+              <ChevronDown className="w-4 h-4 absolute right-3 top-1/2 -translate-y-1/2 text-stone-400 pointer-events-none" />
             </div>
             <p className="text-xs text-stone-400 mt-2">
               You can change this later in settings ·{" "}
