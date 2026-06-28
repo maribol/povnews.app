@@ -267,8 +267,20 @@ export function App() {
     return baseItems.filter((i) => i.pillarSlug === sidebarFilter.slug);
   }, [baseItems, archivedItems, sidebarFilter, searchQuery, history, digest, archived]);
 
+  // Every item we know about, across the current digest and history, so an item
+  // chosen from the command palette opens even when it isn't in the active
+  // filter. Current digest wins on id collisions.
+  const itemById = useMemo(() => {
+    const map = new Map<string, DigestItem>();
+    for (const d of history ?? []) for (const it of d.items) map.set(it.id, it);
+    for (const it of digest?.items ?? []) map.set(it.id, it);
+    return map;
+  }, [history, digest]);
+
   const selectedItem: DigestItem | null =
-    filteredItems.find((i) => i.id === selectedId) ??
+    (selectedId
+      ? filteredItems.find((i) => i.id === selectedId) ?? itemById.get(selectedId) ?? null
+      : null) ??
     filteredItems[0] ??
     null;
 
@@ -501,8 +513,11 @@ export function App() {
     return () => window.removeEventListener("keydown", onKey);
   }, []);
 
-  function handlePaletteChoose(item: DigestItem, query: string): void {
-    setSearchQuery(query);
+  function handlePaletteChoose(item: DigestItem): void {
+    // Navigate to the chosen item without leaving a lingering search query in
+    // the main feed — otherwise "All items" silently shows search results while
+    // the sidebar count reflects only the digest.
+    setSearchQuery("");
     setSidebarFilter(archived.has(item.id) ? { kind: "archived" } : { kind: "all" });
     setSelectedId(item.id);
     setPaletteOpen(false);

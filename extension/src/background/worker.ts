@@ -151,6 +151,7 @@ async function mergePartialDigestFromStream(): Promise<void> {
   await setInStorage(STORAGE_KEYS.latestDigest, merged.digest);
   scheduleEnrichItems(partialItems);
   await onItemsDelivered(merged.addedItems);
+  logAddedItems(merged.addedItems);
   pushActivity({
     ts: Date.now(),
     kind: "status",
@@ -163,6 +164,18 @@ async function mergePartialDigestFromStream(): Promise<void> {
     phase: "writing",
     itemsWritten: prevCount + merged.added,
   });
+}
+
+/** Record each newly-added article in the activity log, so the run history
+ * shows *which* stories were added (not just a count). */
+function logAddedItems(items: DigestItem[]): void {
+  for (const it of items) {
+    pushActivity({
+      ts: Date.now(),
+      kind: "tool_done",
+      text: it.source ? `Added → ${it.title} (${it.source})` : `Added → ${it.title}`,
+    });
+  }
 }
 
 /** Called whenever new items land in the digest (streaming or final). */
@@ -849,6 +862,11 @@ async function startAgentRun(
       status: "running",
       trigger,
       startedAt,
+      // Persist the discovery log (sites scanned, articles found) into the run
+      // row now, so it survives even if the service worker is evicted during the
+      // long scoring stream and the in-memory log is lost.
+      activityLog: fullActivitySnapshot(),
+      activitySummary: summarizeActivity(activityLog),
     });
 
     await chrome.alarms.create(POLL_ALARM, { periodInMinutes: 1 });
@@ -1155,6 +1173,7 @@ async function pollActiveRun(): Promise<void> {
         await upsertDigestHistory(merged.digest);
         addedCount = merged.added;
         await onItemsDelivered(merged.addedItems);
+        logAddedItems(merged.addedItems);
       } else if (!baseExisting && parsed.items?.length) {
         const stampedAt = new Date().toISOString();
         const digest: Digest = {
@@ -1167,6 +1186,7 @@ async function pollActiveRun(): Promise<void> {
         await upsertDigestHistory(digest);
         addedCount = parsed.items.length;
         await onItemsDelivered(digest.items);
+        logAddedItems(digest.items);
       }
 
       scheduleEnrichItems(parsed.items ?? []);
