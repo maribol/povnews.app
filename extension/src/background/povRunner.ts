@@ -210,7 +210,7 @@ export function buildScoringPrompt(
   const feedbackBlock = buildFeedbackBlock(pov);
   const pillarNames = pov.pillars.map((p) => `${p.slug} → ${p.name}`).join(", ");
 
-  const prompt = `# Daily digest — scoring mode
+  const prompt = `# Daily digest, scoring mode
 
 You are curating a personal news digest. **A reliable client has already discovered and verified ${scoringCandidates.length} real, recent articles** from the user's own sources (RSS, Reddit, Hacker News). Your job is **scoring + writing**, not discovery.
 
@@ -229,7 +229,11 @@ ${povFraming}
 ## Voice — how to write summary, whyItMatters, quotableSnippet
 ${brandVoice}
 
-The \`whyItMatters\` line is the most important field. Write it like a sharp friend who knows this person's work texting them why this specific story is worth their time — warm, direct, second person ("you"/"your"), concrete to their pillars and audience. No "yo", no slang, no corporate filler, no "this could be relevant if…". Be specific about the actual implication for them.
+**Write everything like a friend, not a press release.** Both \`summary\` and \`whyItMatters\` should sound like a sharp friend who knows this person's work, talking to them. Plain spoken language, contractions, short sentences. The \`summary\` tells them what happened the way you'd text a friend who missed it; \`whyItMatters\` tells them why it's worth their time. Second person ("you"/"your"), concrete to their pillars and audience.
+
+**Punctuation (this matters):** NEVER use em-dashes (—) or en-dashes (–) as punctuation, and never use ellipses (… or trailing ...). The em-dash is the #1 tell that copy was written by AI, and it instantly reads as corporate. Use a period and start a new sentence instead. Two short sentences beat one sentence with an em-dash.
+
+No "yo", no slang, no corporate filler ("leverage", "adjacency", "stacking fast", "pattern-match"), no "this could be relevant if…". Be specific about the actual implication for them, in words a person would actually say.
 
 ## User POV
 \`\`\`json
@@ -254,8 +258,8 @@ Return ONLY a single JSON code block as your final message (no prose around it).
       "title": "<cleaned headline>",
       "published": "<ISO date if known, else today>",
       "source": "<publication or r/subreddit>",
-      "summary": "<1–2 sentence factual summary of what happened>",
-      "whyItMatters": "<colloquial, specific, second-person — why THIS person should care>",
+      "summary": "<1-2 sentences, what happened, told like you'd tell a friend who missed it. Factual but spoken, not a press-release rewrite. No em-dashes>",
+      "whyItMatters": "<warm, specific, second-person, why THIS person should care. Sounds like a friend texting them. No em-dashes, no corporate filler>",
       "quotableSnippet": "<a sharp line worth quoting, <=200 chars>",
       "pillarSlug": "<one of the pillar slugs above>",
       "pillarName": "<matching pillar name>",

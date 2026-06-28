@@ -82,7 +82,7 @@ Write to the user when natural ("you", "your stack", "your tests"). Do **not** w
 | "Meta updated ad policies." | "Policy shifts that affect tracking usually show up in CAC before they show up in your dashboard." |
 | "A new AI writing tool launched." | "Another copy generator won't fix iteration speed once a page is live — watch for tools that change that." |
 
-`summary` stays factual (2–3 sentences). `whyItMatters` carries the personal implication.
+`summary` stays factual but is still written in a human, spoken voice (1–2 sentences, like telling a friend what happened — never a press-release rewrite, never em-dashes). `whyItMatters` carries the personal implication. See `brand-voice.md` for the punctuation rules (no em-dashes, no ellipses).
 
 ---
 
