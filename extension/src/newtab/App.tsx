@@ -43,6 +43,18 @@ const isMacPlatform =
   typeof navigator !== "undefined" &&
   navigator.platform.toLowerCase().includes("mac");
 
+/**
+ * After removing `removedId` from `list`, return the id to select next: the item
+ * that follows it, or the new last item if it was at the end. Null if none left.
+ */
+function pickNextId(list: DigestItem[], removedId: string): string | null {
+  const idx = list.findIndex((i) => i.id === removedId);
+  const remaining = list.filter((i) => i.id !== removedId);
+  if (remaining.length === 0) return null;
+  if (idx < 0) return remaining[0]!.id;
+  return (remaining[idx] ?? remaining[remaining.length - 1]!).id;
+}
+
 function filtersMatch(a: SidebarFilter, b: SidebarFilter): boolean {
   if (a.kind !== b.kind) return false;
   if (a.kind === "pillar" && b.kind === "pillar") return a.slug === b.slug;
@@ -399,19 +411,17 @@ export function App() {
   }
 
   async function handleArchive(id: string): Promise<void> {
+    const wasSelected = (selectedItem?.id ?? selectedId) === id;
+    const nextId = pickNextId(filteredItems, id);
     await chrome.runtime.sendMessage({ type: "ARCHIVE_ITEM", itemId: id });
-    const next = filteredItems.filter((i) => i.id !== id);
-    if (selectedId === id) {
-      setSelectedId(next[0]?.id ?? null);
-    }
+    if (wasSelected) setSelectedId(nextId);
   }
 
   async function handleUnarchive(id: string): Promise<void> {
+    const wasSelected = (selectedItem?.id ?? selectedId) === id;
+    const nextId = pickNextId(filteredItems, id);
     await chrome.runtime.sendMessage({ type: "UNARCHIVE_ITEM", itemId: id });
-    const next = filteredItems.filter((i) => i.id !== id);
-    if (selectedId === id) {
-      setSelectedId(next[0]?.id ?? null);
-    }
+    if (wasSelected) setSelectedId(nextId);
   }
 
   function handleExport(): void {
